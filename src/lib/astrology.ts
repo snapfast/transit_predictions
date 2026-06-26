@@ -1,6 +1,7 @@
 import * as AstModule from 'astronomy-engine';
 
 // Workaround for ESM/CJS interop
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const Ast = (AstModule as any).default || AstModule;
 
 export interface PlanetData {
@@ -162,8 +163,8 @@ export function calculateTransits(date: Date, lat: number = 28.6139, lon: number
     const observer = new Ast.Observer(lat, lon, 0);
 
     // Find sunrise and sunset for the current day
-    let sunriseTime = time;
-    let sunsetTime = time;
+    // const sunriseTime = time;
+    // const sunsetTime = time;
     let isDayTime = true;
 
     // Approximate daytime calculation
