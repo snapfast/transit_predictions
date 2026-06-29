@@ -60,6 +60,8 @@ export default function Home() {
 
     const cached = SUGGESTIONS_CACHE.get(cacheKey);
     if (cached) {
+      SUGGESTIONS_CACHE.delete(cacheKey);
+      SUGGESTIONS_CACHE.set(cacheKey, cached);
       queueMicrotask(() => setSuggestions(cached));
       return;
     }
@@ -103,7 +105,9 @@ export default function Home() {
 
         const uniqueCities: Suggestion[] = Array.from(uniqueCitiesMap.values());
 
-        if (SUGGESTIONS_CACHE.size >= MAX_CACHE_SIZE) {
+        if (SUGGESTIONS_CACHE.has(cacheKey)) {
+          SUGGESTIONS_CACHE.delete(cacheKey);
+        } else if (SUGGESTIONS_CACHE.size >= MAX_CACHE_SIZE) {
           const firstKey = SUGGESTIONS_CACHE.keys().next().value;
           if (firstKey !== undefined) SUGGESTIONS_CACHE.delete(firstKey);
         }
