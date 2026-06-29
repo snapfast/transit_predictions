@@ -152,7 +152,8 @@ export default function Home() {
   useEffect(() => {
     if (!dateStr || !timeStr) return;
 
-    try {
+    const timer = setTimeout(() => {
+      try {
         const [year, month, day] = dateStr.split('-').map(Number);
         const [hour, minute] = timeStr.split(':').map(Number);
 
@@ -165,9 +166,12 @@ export default function Home() {
           setPlanets(p);
           setChartData(d1);
         });
-    } catch (e) {
+      } catch (e) {
         console.error("Failed to calculate transits", e);
-    }
+      }
+    }, 200);
+
+    return () => clearTimeout(timer);
   }, [dateStr, timeStr, lat, lon]);
 
   return (
