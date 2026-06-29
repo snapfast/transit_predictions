@@ -99,6 +99,7 @@ export function calculateTransits(date: Date, lat: number = 28.6139, lon: number
     });
 
     // Traditional and Modern Planets
+    const timeDelta = time.AddDays(0.1); // +0.1 days
     PLANET_MAP.forEach(p => {
         const pos = Ast.GeoVector(p.body, time, true);
         const ecl = Ast.Ecliptic(pos);
@@ -110,7 +111,6 @@ export function calculateTransits(date: Date, lat: number = 28.6139, lon: number
         // Check for retrograde motion
         let isRetrograde = false;
         if (p.name !== "Sun" && p.name !== "Moon") {
-            const timeDelta = time.AddDays(0.1); // +0.1 days
             const posDelta = Ast.GeoVector(p.body, timeDelta, true);
             const eclDelta = Ast.Ecliptic(posDelta);
             let lonDiff = eclDelta.elon - ecl.elon;
