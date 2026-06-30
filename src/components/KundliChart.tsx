@@ -25,31 +25,29 @@ const KundliChartComponent: FC<KundliChartProps> = ({ data }) => {
   const { houses, houseRasis } = data;
 
   return (
-    <div className="w-full aspect-square max-w-[500px] mx-auto relative p-4 bg-white rounded-lg shadow-sm">
-      <svg viewBox="0 0 400 400" className="w-full h-full">
-        <rect x="0" y="0" width="400" height="400" fill="none" stroke="#991B1B" strokeWidth="1.5" strokeOpacity="0.8" />
-        <line x1="0" y1="0" x2="400" y2="400" stroke="#991B1B" strokeWidth="1.5" strokeOpacity="0.8" />
-        <line x1="400" y1="0" x2="0" y2="400" stroke="#991B1B" strokeWidth="1.5" strokeOpacity="0.8" />
-        <line x1="200" y1="0" x2="400" y2="200" stroke="#991B1B" strokeWidth="1.5" strokeOpacity="0.8" />
-        <line x1="400" y1="200" x2="200" y2="400" stroke="#991B1B" strokeWidth="1.5" strokeOpacity="0.8" />
-        <line x1="200" y1="400" x2="0" y2="200" stroke="#991B1B" strokeWidth="1.5" strokeOpacity="0.8" />
-        <line x1="0" y1="200" x2="200" y2="0" stroke="#991B1B" strokeWidth="1.5" strokeOpacity="0.8" />
+    <svg viewBox="0 0 400 400" className="w-full aspect-square max-w-[500px] mx-auto relative p-4 bg-white rounded-lg shadow-sm">
+      <rect x="0" y="0" width="400" height="400" fill="none" stroke="#991B1B" strokeWidth="1.5" strokeOpacity="0.8" />
+      <line x1="0" y1="0" x2="400" y2="400" stroke="#991B1B" strokeWidth="1.5" strokeOpacity="0.8" />
+      <line x1="400" y1="0" x2="0" y2="400" stroke="#991B1B" strokeWidth="1.5" strokeOpacity="0.8" />
+      <line x1="200" y1="0" x2="400" y2="200" stroke="#991B1B" strokeWidth="1.5" strokeOpacity="0.8" />
+      <line x1="400" y1="200" x2="200" y2="400" stroke="#991B1B" strokeWidth="1.5" strokeOpacity="0.8" />
+      <line x1="200" y1="400" x2="0" y2="200" stroke="#991B1B" strokeWidth="1.5" strokeOpacity="0.8" />
+      <line x1="0" y1="200" x2="200" y2="0" stroke="#991B1B" strokeWidth="1.5" strokeOpacity="0.8" />
 
-        {HOUSE_COORDINATES.slice(1).map((coords, index) => {
-          const houseNum = index + 1;
-          if (!coords) return null;
-          return (
-            <HouseContent
-              key={houseNum}
-              x={coords.x}
-              y={coords.y}
-              rasi={houseRasis[houseNum]}
-              planets={houses[houseNum]}
-            />
-          );
-        })}
-      </svg>
-    </div>
+      {HOUSE_COORDINATES.slice(1).map((coords, index) => {
+        const houseNum = index + 1;
+        if (!coords) return null;
+        return (
+          <HouseContent
+            key={houseNum}
+            x={coords.x}
+            y={coords.y}
+            rasi={houseRasis[houseNum]}
+            planets={houses[houseNum]}
+          />
+        );
+      })}
+    </svg>
   );
 };
 
