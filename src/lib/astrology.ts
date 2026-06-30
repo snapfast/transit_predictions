@@ -30,37 +30,79 @@ export function getD60Rasi(longitude: number): number {
     return (rasiIdx + Math.floor(degInSign * 2)) % 12;
 }
 
-export function generatePredictions(planets: PlanetData[]): string[] {
-    const predictions: string[] = [];
+export interface Predictions {
+    placements: string[];
+    aspects: string[];
+}
+
+export function generatePredictions(planets: PlanetData[]): Predictions {
+    const placements: string[] = [];
+    const aspects: string[] = [];
 
     const getPlanet = (name: string) => planets.find(p => p.name === name);
     const moon = getPlanet("Moon");
-    const sun = getPlanet("Sun");
-    const asc = getPlanet("Ascendant");
-    const jupiter = getPlanet("Jupiter");
-    const saturn = getPlanet("Saturn");
 
-    if (moon) {
-        predictions.push(`The Moon is currently transiting through ${moon.rasi}, occupying your ${moon.house}th house. This highlights themes of ${getHouseTheme(moon.house)} in your emotional landscape today.`);
+    if (!moon) {
+        return { placements, aspects };
     }
 
-    if (sun) {
-        predictions.push(`With the Sun in ${sun.rasi} (House ${sun.house}), your core energy and focus will be drawn towards matters of ${getHouseTheme(sun.house)}.`);
-    }
+    const moonRasiIdx = RASIS.indexOf(moon.rasi);
 
-    if (asc) {
-        predictions.push(`The Ascendant is in ${asc.rasi}, setting a ${asc.rasi.toLowerCase()}-like tone for the overall day's events: ${getSignTheme(asc.rasi)}.`);
-    }
+    const getHouseFromMoon = (planetRasi: string) => {
+        const planetRasiIdx = RASIS.indexOf(planetRasi);
+        return ((planetRasiIdx - moonRasiIdx + 12) % 12) + 1;
+    };
 
-    if (jupiter) {
-        predictions.push(`Jupiter's expansive presence in the ${jupiter.house}th house brings potential for growth and optimism regarding ${getHouseTheme(jupiter.house)}.`);
-    }
+    planets.forEach(planet => {
+        if (planet.name === "Ascendant" || planet.name === "Gulika" || planet.name === "Mandi") return;
 
-    if (saturn) {
-        predictions.push(`Saturn's transit in the ${saturn.house}th house reminds you to maintain discipline and responsibility in the area of ${getHouseTheme(saturn.house)}.`);
-    }
+        const houseFromMoon = getHouseFromMoon(planet.rasi);
 
-    return predictions;
+        if (planet.name === "Moon") {
+            placements.push(`The Moon is in ${planet.rasi} (House ${houseFromMoon} from itself). This highlights themes of ${getHouseTheme(houseFromMoon)} in your emotional landscape today.`);
+        } else if (planet.name === "Sun") {
+            placements.push(`The Sun is in ${planet.rasi} (House ${houseFromMoon} from Moon). Your core energy and focus will be drawn towards matters of ${getHouseTheme(houseFromMoon)}.`);
+        } else if (planet.name === "Jupiter") {
+            placements.push(`Jupiter's expansive presence in the ${houseFromMoon}th house from the Moon brings potential for growth and optimism regarding ${getHouseTheme(houseFromMoon)}.`);
+        } else if (planet.name === "Saturn") {
+            placements.push(`Saturn's transit in the ${houseFromMoon}th house from the Moon reminds you to maintain discipline and responsibility in the area of ${getHouseTheme(houseFromMoon)}.`);
+        } else if (planet.name === "Mars") {
+             placements.push(`Mars in the ${houseFromMoon}th house from the Moon brings energy and drive to matters of ${getHouseTheme(houseFromMoon)}.`);
+        } else if (planet.name === "Mercury") {
+             placements.push(`Mercury in the ${houseFromMoon}th house from the Moon affects your communication and intellect in the realm of ${getHouseTheme(houseFromMoon)}.`);
+        } else if (planet.name === "Venus") {
+             placements.push(`Venus in the ${houseFromMoon}th house from the Moon influences harmony, relationships, and comforts concerning ${getHouseTheme(houseFromMoon)}.`);
+        } else if (planet.name === "Rahu") {
+             placements.push(`Rahu in the ${houseFromMoon}th house from the Moon creates worldly desires and unconventional approaches towards ${getHouseTheme(houseFromMoon)}.`);
+        } else if (planet.name === "Ketu") {
+             placements.push(`Ketu in the ${houseFromMoon}th house from the Moon brings detachment and spiritual introspection regarding ${getHouseTheme(houseFromMoon)}.`);
+        } else if (planet.name === "Uranus" || planet.name === "Neptune" || planet.name === "Pluto") {
+             placements.push(`${planet.name} in the ${houseFromMoon}th house from the Moon brings its outer planetary influence to matters of ${getHouseTheme(houseFromMoon)}.`);
+        }
+
+        // Calculate aspects
+        if (planet.name === "Sun" || planet.name === "Moon" || planet.name === "Mercury" || planet.name === "Venus") {
+            const aspectedHouse = (houseFromMoon + 6) % 12 || 12;
+            aspects.push(`${planet.name} aspects the ${aspectedHouse}th house from the Moon, influencing ${getHouseTheme(aspectedHouse)}.`);
+        } else if (planet.name === "Mars") {
+            const aspect4 = (houseFromMoon + 3) % 12 || 12;
+            const aspect7 = (houseFromMoon + 6) % 12 || 12;
+            const aspect8 = (houseFromMoon + 7) % 12 || 12;
+            aspects.push(`Mars aspects the ${aspect4}th, ${aspect7}th, and ${aspect8}th houses from the Moon, driving energy towards ${getHouseTheme(aspect4)}, ${getHouseTheme(aspect7)}, and ${getHouseTheme(aspect8)}.`);
+        } else if (planet.name === "Jupiter" || planet.name === "Rahu" || planet.name === "Ketu") {
+            const aspect5 = (houseFromMoon + 4) % 12 || 12;
+            const aspect7 = (houseFromMoon + 6) % 12 || 12;
+            const aspect9 = (houseFromMoon + 8) % 12 || 12;
+            aspects.push(`${planet.name} aspects the ${aspect5}th, ${aspect7}th, and ${aspect9}th houses from the Moon, expanding ${getHouseTheme(aspect5)}, ${getHouseTheme(aspect7)}, and ${getHouseTheme(aspect9)}.`);
+        } else if (planet.name === "Saturn") {
+            const aspect3 = (houseFromMoon + 2) % 12 || 12;
+            const aspect7 = (houseFromMoon + 6) % 12 || 12;
+            const aspect10 = (houseFromMoon + 9) % 12 || 12;
+            aspects.push(`Saturn aspects the ${aspect3}th, ${aspect7}th, and ${aspect10}th houses from the Moon, bringing structure and discipline to ${getHouseTheme(aspect3)}, ${getHouseTheme(aspect7)}, and ${getHouseTheme(aspect10)}.`);
+        }
+    });
+
+    return { placements, aspects };
 }
 
 function getHouseTheme(house: number): string {
@@ -79,24 +121,6 @@ function getHouseTheme(house: number): string {
         12: "spirituality, letting go, and hidden matters"
     };
     return themes[house] || "general life events";
-}
-
-function getSignTheme(sign: string): string {
-    const themes: { [key: string]: string } = {
-        "Aries": "dynamic and action-oriented",
-        "Taurus": "stable and practical",
-        "Gemini": "communicative and adaptable",
-        "Cancer": "nurturing and intuitive",
-        "Leo": "confident and expressive",
-        "Virgo": "analytical and detail-oriented",
-        "Libra": "balanced and harmonious",
-        "Scorpio": "intense and transformative",
-        "Sagittarius": "optimistic and adventurous",
-        "Capricorn": "structured and ambitious",
-        "Aquarius": "innovative and unconventional",
-        "Pisces": "compassionate and spiritual"
-    };
-    return themes[sign] || "neutral and steady";
 }
 
 const NAKSHATRAS = [
@@ -149,7 +173,7 @@ function formatDegree(deg: number): string {
     return `${d}° ${m}'`;
 }
 
-export function calculateTransits(date: Date, lat: number = 28.6139, lon: number = 77.2090): { planets: PlanetData[], d1: DivisionalChartData, d9: DivisionalChartData, d60: DivisionalChartData, predictions: string[] } {
+export function calculateTransits(date: Date, lat: number = 28.6139, lon: number = 77.2090): { planets: PlanetData[], d1: DivisionalChartData, d9: DivisionalChartData, d60: DivisionalChartData, predictions: Predictions } {
     const time = Ast.MakeTime(date);
     const ayanamsa = getLahiriAyanamsa(time);
 

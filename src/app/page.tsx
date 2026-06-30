@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, KeyboardEvent } from "react";
-import { calculateTransits, PlanetData, DivisionalChartData } from "@/lib/astrology";
+import { calculateTransits, PlanetData, DivisionalChartData, Predictions } from "@/lib/astrology";
 import KundliChart from "@/components/KundliChart";
 import { Clock, MapPin, Calendar } from "lucide-react";
 
@@ -30,7 +30,7 @@ export default function Home() {
   const [chartData, setChartData] = useState<DivisionalChartData | null>(null);
   const [d9Data, setD9Data] = useState<DivisionalChartData | null>(null);
   const [d60Data, setD60Data] = useState<DivisionalChartData | null>(null);
-  const [predictions, setPredictions] = useState<string[]>([]);
+  const [predictions, setPredictions] = useState<Predictions>({ placements: [], aspects: [] });
 
   useEffect(() => {
     // Initialize with current date/time on client (use a microtask to avoid cascading renders)
@@ -339,7 +339,7 @@ export default function Home() {
 
         <div className="grid md:grid-cols-2 gap-8 items-start">
           {/* Table Section */}
-          <section className="bg-white rounded-2xl shadow-sm border border-orange-100 overflow-hidden">
+          <section className="bg-white rounded-2xl shadow-sm border border-orange-100 overflow-hidden md:col-span-2">
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse">
                 <thead>
@@ -369,14 +369,31 @@ export default function Home() {
             </div>
           </section>
 
-          {/* Predictions Section */}
+          {/* Predictions Section - Placements */}
           <section className="bg-white p-6 rounded-2xl shadow-sm border border-orange-100">
-            <h2 className="text-xl font-semibold mb-6 text-gray-800">Daily Transit Insights</h2>
-            {predictions.length > 0 ? (
+            <h2 className="text-xl font-semibold mb-6 text-gray-800">Planetary Placements (from Moon)</h2>
+            {predictions.placements.length > 0 ? (
               <ul className="space-y-4">
-                {predictions.map((pred, i) => (
+                {predictions.placements.map((pred, i) => (
                   <li key={i} className="flex gap-3 text-gray-700 leading-relaxed">
                     <span className="text-orange-500 flex-shrink-0 mt-1">✨</span>
+                    <p>{pred}</p>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <div className="animate-pulse h-[200px] bg-gray-100 rounded-lg"></div>
+            )}
+          </section>
+
+          {/* Predictions Section - Aspects */}
+          <section className="bg-white p-6 rounded-2xl shadow-sm border border-orange-100">
+            <h2 className="text-xl font-semibold mb-6 text-gray-800">Planetary Aspects (from Moon)</h2>
+            {predictions.aspects.length > 0 ? (
+              <ul className="space-y-4">
+                {predictions.aspects.map((pred, i) => (
+                  <li key={i} className="flex gap-3 text-gray-700 leading-relaxed">
+                    <span className="text-orange-500 flex-shrink-0 mt-1">🔭</span>
                     <p>{pred}</p>
                   </li>
                 ))}
