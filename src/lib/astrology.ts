@@ -7,6 +7,7 @@ const Ast = (AstModule as any).default || AstModule;
 export interface PlanetData {
     name: string;
     symbol: string;
+    longitude: number;
     degree: string;
     rasi: string;
     house: number;
@@ -17,6 +18,85 @@ export interface PlanetData {
 export interface DivisionalChartData {
     houses: { [key: number]: Array<{ symbol: string, isRetrograde: boolean }> };
     houseRasis: { [key: number]: number };
+}
+
+export function getD9Rasi(longitude: number): number {
+    return Math.floor(longitude / (30 / 9)) % 12;
+}
+
+export function getD60Rasi(longitude: number): number {
+    const rasiIdx = Math.floor(longitude / 30);
+    const degInSign = longitude % 30;
+    return (rasiIdx + Math.floor(degInSign * 2)) % 12;
+}
+
+export function generatePredictions(planets: PlanetData[]): string[] {
+    const predictions: string[] = [];
+
+    const getPlanet = (name: string) => planets.find(p => p.name === name);
+    const moon = getPlanet("Moon");
+    const sun = getPlanet("Sun");
+    const asc = getPlanet("Ascendant");
+    const jupiter = getPlanet("Jupiter");
+    const saturn = getPlanet("Saturn");
+
+    if (moon) {
+        predictions.push(`The Moon is currently transiting through ${moon.rasi}, occupying your ${moon.house}th house. This highlights themes of ${getHouseTheme(moon.house)} in your emotional landscape today.`);
+    }
+
+    if (sun) {
+        predictions.push(`With the Sun in ${sun.rasi} (House ${sun.house}), your core energy and focus will be drawn towards matters of ${getHouseTheme(sun.house)}.`);
+    }
+
+    if (asc) {
+        predictions.push(`The Ascendant is in ${asc.rasi}, setting a ${asc.rasi.toLowerCase()}-like tone for the overall day's events: ${getSignTheme(asc.rasi)}.`);
+    }
+
+    if (jupiter) {
+        predictions.push(`Jupiter's expansive presence in the ${jupiter.house}th house brings potential for growth and optimism regarding ${getHouseTheme(jupiter.house)}.`);
+    }
+
+    if (saturn) {
+        predictions.push(`Saturn's transit in the ${saturn.house}th house reminds you to maintain discipline and responsibility in the area of ${getHouseTheme(saturn.house)}.`);
+    }
+
+    return predictions;
+}
+
+function getHouseTheme(house: number): string {
+    const themes: { [key: number]: string } = {
+        1: "self, vitality, and new beginnings",
+        2: "finances, family, and speech",
+        3: "courage, siblings, and short journeys",
+        4: "home, mother, and inner peace",
+        5: "creativity, intellect, and children",
+        6: "health, daily routines, and overcoming obstacles",
+        7: "partnerships, relationships, and business",
+        8: "transformation, sudden changes, and shared resources",
+        9: "luck, higher wisdom, and long travels",
+        10: "career, public image, and achievements",
+        11: "gains, friendships, and long-term goals",
+        12: "spirituality, letting go, and hidden matters"
+    };
+    return themes[house] || "general life events";
+}
+
+function getSignTheme(sign: string): string {
+    const themes: { [key: string]: string } = {
+        "Aries": "dynamic and action-oriented",
+        "Taurus": "stable and practical",
+        "Gemini": "communicative and adaptable",
+        "Cancer": "nurturing and intuitive",
+        "Leo": "confident and expressive",
+        "Virgo": "analytical and detail-oriented",
+        "Libra": "balanced and harmonious",
+        "Scorpio": "intense and transformative",
+        "Sagittarius": "optimistic and adventurous",
+        "Capricorn": "structured and ambitious",
+        "Aquarius": "innovative and unconventional",
+        "Pisces": "compassionate and spiritual"
+    };
+    return themes[sign] || "neutral and steady";
 }
 
 const NAKSHATRAS = [
@@ -69,7 +149,7 @@ function formatDegree(deg: number): string {
     return `${d}° ${m}'`;
 }
 
-export function calculateTransits(date: Date, lat: number = 28.6139, lon: number = 77.2090): { planets: PlanetData[], d1: DivisionalChartData } {
+export function calculateTransits(date: Date, lat: number = 28.6139, lon: number = 77.2090): { planets: PlanetData[], d1: DivisionalChartData, d9: DivisionalChartData, d60: DivisionalChartData, predictions: string[] } {
     const time = Ast.MakeTime(date);
     const ayanamsa = getLahiriAyanamsa(time);
 
@@ -91,6 +171,7 @@ export function calculateTransits(date: Date, lat: number = 28.6139, lon: number
     planets.push({
         name: "Ascendant",
         symbol: "As",
+        longitude: lagnaSidereal,
         degree: formatDegree(lagnaSidereal % 30),
         rasi: RASIS[lagnaRasiIdx],
         house: 1,
@@ -122,6 +203,7 @@ export function calculateTransits(date: Date, lat: number = 28.6139, lon: number
         planets.push({
             name: p.name,
             symbol: p.symbol,
+            longitude: siderealLong,
             degree: formatDegree(siderealLong % 30),
             rasi: RASIS[rasiIdx],
             house: house,
@@ -141,6 +223,7 @@ export function calculateTransits(date: Date, lat: number = 28.6139, lon: number
     planets.push({
         name: "Rahu",
         symbol: "Ra",
+        longitude: rahuSidereal,
         degree: formatDegree(rahuSidereal % 30),
         rasi: RASIS[rahuRasiIdx],
         house: ((rahuRasiIdx - lagnaRasiIdx + 12) % 12) + 1,
@@ -151,6 +234,7 @@ export function calculateTransits(date: Date, lat: number = 28.6139, lon: number
     planets.push({
         name: "Ketu",
         symbol: "Ke",
+        longitude: ketuSidereal,
         degree: formatDegree(ketuSidereal % 30),
         rasi: RASIS[ketuRasiIdx],
         house: ((ketuRasiIdx - lagnaRasiIdx + 12) % 12) + 1,
@@ -231,6 +315,7 @@ export function calculateTransits(date: Date, lat: number = 28.6139, lon: number
     planets.push({
         name: "Gulika",
         symbol: "Gu",
+        longitude: gulikaSidereal,
         degree: formatDegree(gulikaSidereal % 30),
         rasi: RASIS[Math.floor(gulikaSidereal / 30)],
         house: ((Math.floor(gulikaSidereal / 30) - lagnaRasiIdx + 12) % 12) + 1,
@@ -241,6 +326,7 @@ export function calculateTransits(date: Date, lat: number = 28.6139, lon: number
     planets.push({
         name: "Mandi",
         symbol: "Md",
+        longitude: mandiSidereal,
         degree: formatDegree(mandiSidereal % 30),
         rasi: RASIS[Math.floor(mandiSidereal / 30)],
         house: ((Math.floor(mandiSidereal / 30) - lagnaRasiIdx + 12) % 12) + 1,
@@ -249,23 +335,55 @@ export function calculateTransits(date: Date, lat: number = 28.6139, lon: number
     });
 
 
-    // Generate D1 Chart Data
-    const houses: { [key: number]: Array<{ symbol: string, isRetrograde: boolean }> } = {};
-    const houseRasis: { [key: number]: number } = {};
+    // Generate D1, D9, and D60 Chart Data
+    const d1Houses: { [key: number]: Array<{ symbol: string, isRetrograde: boolean }> } = {};
+    const d1HouseRasis: { [key: number]: number } = {};
+    const d9Houses: { [key: number]: Array<{ symbol: string, isRetrograde: boolean }> } = {};
+    const d9HouseRasis: { [key: number]: number } = {};
+    const d60Houses: { [key: number]: Array<{ symbol: string, isRetrograde: boolean }> } = {};
+    const d60HouseRasis: { [key: number]: number } = {};
+
+    const lagnaD9RasiIdx = getD9Rasi(lagnaSidereal);
+    const lagnaD60RasiIdx = getD60Rasi(lagnaSidereal);
 
     for (let i = 1; i <= 12; i++) {
-        houses[i] = [];
-        houseRasis[i] = ((lagnaRasiIdx + i - 1) % 12) + 1; // 1-based index (Aries = 1)
+        d1Houses[i] = [];
+        d1HouseRasis[i] = ((lagnaRasiIdx + i - 1) % 12) + 1; // 1-based index (Aries = 1)
+
+        d9Houses[i] = [];
+        d9HouseRasis[i] = ((lagnaD9RasiIdx + i - 1) % 12) + 1;
+
+        d60Houses[i] = [];
+        d60HouseRasis[i] = ((lagnaD60RasiIdx + i - 1) % 12) + 1;
     }
 
     planets.forEach(p => {
         if (p.house >= 1 && p.house <= 12) {
-            houses[p.house].push({ symbol: p.symbol, isRetrograde: p.isRetrograde });
+            d1Houses[p.house].push({ symbol: p.symbol, isRetrograde: p.isRetrograde });
+        }
+
+        // D9
+        const d9RasiIdx = getD9Rasi(p.longitude);
+        const d9House = ((d9RasiIdx - lagnaD9RasiIdx + 12) % 12) + 1;
+        if (d9House >= 1 && d9House <= 12) {
+            d9Houses[d9House].push({ symbol: p.symbol, isRetrograde: p.isRetrograde });
+        }
+
+        // D60
+        const d60RasiIdx = getD60Rasi(p.longitude);
+        const d60House = ((d60RasiIdx - lagnaD60RasiIdx + 12) % 12) + 1;
+        if (d60House >= 1 && d60House <= 12) {
+            d60Houses[d60House].push({ symbol: p.symbol, isRetrograde: p.isRetrograde });
         }
     });
 
+    const predictions = generatePredictions(planets);
+
     return {
         planets,
-        d1: { houses, houseRasis }
+        d1: { houses: d1Houses, houseRasis: d1HouseRasis },
+        d9: { houses: d9Houses, houseRasis: d9HouseRasis },
+        d60: { houses: d60Houses, houseRasis: d60HouseRasis },
+        predictions
     };
 }
