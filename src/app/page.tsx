@@ -28,6 +28,9 @@ export default function Home() {
 
   const [planets, setPlanets] = useState<PlanetData[]>([]);
   const [chartData, setChartData] = useState<DivisionalChartData | null>(null);
+  const [d9Data, setD9Data] = useState<DivisionalChartData | null>(null);
+  const [d60Data, setD60Data] = useState<DivisionalChartData | null>(null);
+  const [predictions, setPredictions] = useState<string[]>([]);
 
   useEffect(() => {
     // Initialize with current date/time on client (use a microtask to avoid cascading renders)
@@ -165,10 +168,13 @@ export default function Home() {
 
         if (isNaN(date.getTime())) return;
 
-        const { planets: p, d1 } = calculateTransits(date, lat, lon);
+        const { planets: p, d1, d9, d60, predictions: preds } = calculateTransits(date, lat, lon);
         queueMicrotask(() => {
           setPlanets(p);
           setChartData(d1);
+          setD9Data(d9);
+          setD60Data(d60);
+          setPredictions(preds);
         });
       } catch (e) {
         console.error("Failed to calculate transits", e);
@@ -296,17 +302,37 @@ export default function Home() {
           </div>
         </section>
 
-        <div className="grid md:grid-cols-2 gap-8 items-start">
+        <div className="grid lg:grid-cols-3 md:grid-cols-2 gap-8 items-start">
 
-          {/* Chart Section */}
+          {/* D1 Chart Section */}
           <section className="bg-white p-6 rounded-2xl shadow-sm border border-orange-100">
             <h2 className="text-xl font-semibold mb-6 text-gray-800 text-center">Transit Chart (D1)</h2>
-            {chartData ? <KundliChart data={chartData} /> : <div className="animate-pulse h-[400px] bg-gray-100 rounded-lg"></div>}
+            {chartData ? <KundliChart data={chartData} /> : <div className="animate-pulse h-[300px] bg-gray-100 rounded-lg"></div>}
             <div className="mt-4 text-center text-sm text-gray-500">
               * denotes retrograde motion
             </div>
           </section>
 
+          {/* D9 Chart Section */}
+          <section className="bg-white p-6 rounded-2xl shadow-sm border border-orange-100">
+            <h2 className="text-xl font-semibold mb-6 text-gray-800 text-center">Navamsa Chart (D9)</h2>
+            {d9Data ? <KundliChart data={d9Data} /> : <div className="animate-pulse h-[300px] bg-gray-100 rounded-lg"></div>}
+            <div className="mt-4 text-center text-sm text-gray-500">
+              * denotes retrograde motion
+            </div>
+          </section>
+
+          {/* D60 Chart Section */}
+          <section className="bg-white p-6 rounded-2xl shadow-sm border border-orange-100">
+            <h2 className="text-xl font-semibold mb-6 text-gray-800 text-center">Shashtiamsa Chart (D60)</h2>
+            {d60Data ? <KundliChart data={d60Data} /> : <div className="animate-pulse h-[300px] bg-gray-100 rounded-lg"></div>}
+            <div className="mt-4 text-center text-sm text-gray-500">
+              * denotes retrograde motion
+            </div>
+          </section>
+        </div>
+
+        <div className="grid md:grid-cols-2 gap-8 items-start">
           {/* Table Section */}
           <section className="bg-white rounded-2xl shadow-sm border border-orange-100 overflow-hidden">
             <div className="overflow-x-auto">
@@ -336,6 +362,23 @@ export default function Home() {
                 </tbody>
               </table>
             </div>
+          </section>
+
+          {/* Predictions Section */}
+          <section className="bg-white p-6 rounded-2xl shadow-sm border border-orange-100">
+            <h2 className="text-xl font-semibold mb-6 text-gray-800">Daily Transit Insights</h2>
+            {predictions.length > 0 ? (
+              <ul className="space-y-4">
+                {predictions.map((pred, i) => (
+                  <li key={i} className="flex gap-3 text-gray-700 leading-relaxed">
+                    <span className="text-orange-500 flex-shrink-0 mt-1">✨</span>
+                    <p>{pred}</p>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <div className="animate-pulse h-[200px] bg-gray-100 rounded-lg"></div>
+            )}
           </section>
 
         </div>
