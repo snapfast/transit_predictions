@@ -76,7 +76,12 @@ export default function Home() {
       try {
         const response = await fetch(
           `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&addressdetails=1&limit=5&featuretype=city`,
-          { signal: controller.signal }
+          {
+            signal: controller.signal,
+            headers: {
+              'User-Agent': 'vedic-dashboard/0.1.0'
+            }
+          }
         );
         const data = await response.json();
 
