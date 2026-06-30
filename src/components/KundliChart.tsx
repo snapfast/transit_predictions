@@ -1,6 +1,22 @@
 import { FC, memo } from 'react';
 import { DivisionalChartData } from '@/lib/astrology';
 
+const HOUSE_COORDINATES = [
+  null, // 1-based index
+  { x: 200, y: 100 },
+  { x: 100, y: 50 },
+  { x: 50, y: 100 },
+  { x: 100, y: 200 },
+  { x: 50, y: 300 },
+  { x: 100, y: 350 },
+  { x: 200, y: 300 },
+  { x: 300, y: 350 },
+  { x: 350, y: 300 },
+  { x: 300, y: 200 },
+  { x: 350, y: 100 },
+  { x: 300, y: 50 }
+];
+
 interface KundliChartProps {
   data: DivisionalChartData;
 }
@@ -19,18 +35,19 @@ const KundliChartComponent: FC<KundliChartProps> = ({ data }) => {
         <line x1="200" y1="400" x2="0" y2="200" stroke="#991B1B" strokeWidth="1.5" strokeOpacity="0.8" />
         <line x1="0" y1="200" x2="200" y2="0" stroke="#991B1B" strokeWidth="1.5" strokeOpacity="0.8" />
 
-        <HouseContent x={200} y={100} rasi={houseRasis[1]} planets={houses[1]} />
-        <HouseContent x={100} y={50} rasi={houseRasis[2]} planets={houses[2]} />
-        <HouseContent x={50} y={100} rasi={houseRasis[3]} planets={houses[3]} />
-        <HouseContent x={100} y={200} rasi={houseRasis[4]} planets={houses[4]} />
-        <HouseContent x={50} y={300} rasi={houseRasis[5]} planets={houses[5]} />
-        <HouseContent x={100} y={350} rasi={houseRasis[6]} planets={houses[6]} />
-        <HouseContent x={200} y={300} rasi={houseRasis[7]} planets={houses[7]} />
-        <HouseContent x={300} y={350} rasi={houseRasis[8]} planets={houses[8]} />
-        <HouseContent x={350} y={300} rasi={houseRasis[9]} planets={houses[9]} />
-        <HouseContent x={300} y={200} rasi={houseRasis[10]} planets={houses[10]} />
-        <HouseContent x={350} y={100} rasi={houseRasis[11]} planets={houses[11]} />
-        <HouseContent x={300} y={50} rasi={houseRasis[12]} planets={houses[12]} />
+        {HOUSE_COORDINATES.slice(1).map((coords, index) => {
+          const houseNum = index + 1;
+          if (!coords) return null;
+          return (
+            <HouseContent
+              key={houseNum}
+              x={coords.x}
+              y={coords.y}
+              rasi={houseRasis[houseNum]}
+              planets={houses[houseNum]}
+            />
+          );
+        })}
       </svg>
     </div>
   );
