@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, KeyboardEvent } from "react";
 import { calculateTransits, PlanetData, DivisionalChartData, Predictions, DashaInfo, SadeSatiInfo, Remedy, AyanamsaType, AshtakavargaData } from "@/lib/astrology";
 import KundliChart, { ChartStyle } from "@/components/KundliChart";
-import { Clock, MapPin, Calendar, Sun, Moon, Info, Sparkles, User, Navigation } from "lucide-react";
+import { Clock, MapPin, Calendar, Sun, Moon, Info, Sparkles, User, Navigation, ChevronDown, ChevronUp, Settings, Edit2 } from "lucide-react";
 
 interface Suggestion { name: string; lat: string; lon: string; }
 const SUGGESTIONS_CACHE = new Map<string, Suggestion[]>();
@@ -52,6 +52,7 @@ export default function Home() {
   const [chartStyle, setChartStyle] = useState<ChartStyle>("North");
   const [scrubDays, setScrubDays] = useState<number>(0);
   const [isInitialized, setIsInitialized] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(true);
 
   // Load from local storage and set initial transit time
   useEffect(() => {
@@ -63,7 +64,10 @@ export default function Home() {
       const savedBirthLon = localStorage.getItem("birthLon");
       const savedBirthPob = localStorage.getItem("birthPob");
 
-      if (savedBirthDate) setBirthDateStr(savedBirthDate);
+      if (savedBirthDate) {
+        setBirthDateStr(savedBirthDate);
+        setIsSettingsOpen(false);
+      }
       if (savedBirthTime) setBirthTimeStr(savedBirthTime);
       if (savedBirthLat) setBirthLat(parseFloat(savedBirthLat));
       if (savedBirthLon) setBirthLon(parseFloat(savedBirthLon));
@@ -282,91 +286,151 @@ export default function Home() {
   };
 
   return (
-    <main className="min-h-screen flex flex-col pb-24 bg-[#F9F7F1] text-[#1D4046] font-sans">
-      <div className="flex-1 max-w-7xl mx-auto w-full p-4 md:p-8 space-y-8 relative">
+    <main className="min-h-screen flex flex-col pb-32 bg-[#F9F7F1] text-[#1D4046] font-sans">
+      <div className="flex-1 max-w-7xl mx-auto w-full p-4 md:p-8 space-y-12 relative">
 
-        {/* Global Input Section */}
-        <section className="bg-white p-6 rounded-2xl shadow-sm border border-[#1D4046]/10 flex flex-col lg:flex-row gap-6 relative" ref={suggestionRef}>
-
-          {/* Birth Profile Inputs */}
-          <div className="flex-1 space-y-4 border-b lg:border-b-0 lg:border-r border-[#1D4046]/10 pb-6 lg:pb-0 lg:pr-6">
-            <h2 className="text-xl font-serif text-[#1D4046] flex items-center gap-2">
-                <User className="w-5 h-5 text-[#F59E0B]" /> Natal Chart Profile
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2 col-span-1 md:col-span-2 relative">
-                <label className="text-sm font-semibold text-[#1D4046]/60 flex items-center gap-2">
-                  <MapPin className="w-4 h-4 text-[#F59E0B]"/> Birth City
-                </label>
-                <div className="relative">
-                  <input
-                    value={birthPob}
-                    onChange={e => { setBirthPob(e.target.value); setShowSuggestionsFor("birth"); }}
-                    onKeyDown={handleKeyDown}
-                    onFocus={() => setShowSuggestionsFor("birth")}
-                    className="w-full p-2 bg-[#F9F7F1] border border-[#1D4046]/20 rounded-lg outline-none focus:ring-1 focus:ring-[#F59E0B]"
-                    placeholder="Search birth city..."
-                  />
-                  {isLoadingCity && showSuggestionsFor === "birth" && <div className="absolute right-3 top-2.5 animate-spin w-4 h-4 border-2 border-[#F59E0B] border-t-transparent rounded-full" />}
+        {/* Global Input Section (Collapsible) */}
+        <section className="bg-white rounded-3xl shadow-sm border border-[#1D4046]/10 overflow-hidden transition-all duration-500 ease-in-out" ref={suggestionRef}>
+          {!isSettingsOpen ? (
+            <div className="p-4 md:p-6 flex flex-col md:flex-row items-center justify-between gap-4 bg-gradient-to-r from-white to-[#F9F7F1]">
+              <div className="flex flex-wrap items-center gap-6 text-sm">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-full bg-[#F59E0B]/10 flex items-center justify-center">
+                    <User className="w-4 h-4 text-[#F59E0B]" />
+                  </div>
+                  <div>
+                    <div className="text-[10px] font-bold text-[#1D4046]/40 uppercase tracking-widest">Natal</div>
+                    <div className="font-semibold">{birthPob.split(',')[0]} • {birthDateStr}</div>
+                  </div>
+                </div>
+                <div className="hidden md:block h-8 w-px bg-[#1D4046]/10" />
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-full bg-[#1D4046]/10 flex items-center justify-center">
+                    <Navigation className="w-4 h-4 text-[#1D4046]" />
+                  </div>
+                  <div>
+                    <div className="text-[10px] font-bold text-[#1D4046]/40 uppercase tracking-widest">Transit</div>
+                    <div className="font-semibold">{transitPob.split(',')[0]} • {transitDateStr}</div>
+                  </div>
                 </div>
               </div>
-              <div className="space-y-2">
-                <label className="text-sm font-semibold text-[#1D4046]/60 flex items-center gap-2"><Calendar className="w-4 h-4 text-[#F59E0B]"/> Birth Date</label>
-                <input type="date" value={birthDateStr} onChange={e => setBirthDateStr(e.target.value)} className="w-full p-2 bg-[#F9F7F1] border border-[#1D4046]/20 rounded-lg outline-none" />
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-semibold text-[#1D4046]/60 flex items-center gap-2"><Clock className="w-4 h-4 text-[#F59E0B]"/> Birth Time</label>
-                <input type="time" value={birthTimeStr} onChange={e => setBirthTimeStr(e.target.value)} className="w-full p-2 bg-[#F9F7F1] border border-[#1D4046]/20 rounded-lg outline-none" />
-              </div>
+              <button
+                onClick={() => setIsSettingsOpen(true)}
+                className="flex items-center gap-2 px-4 py-2 bg-[#1D4046] text-white rounded-full text-xs font-bold hover:bg-[#1D4046]/90 transition-all shadow-md"
+              >
+                <Edit2 className="w-3.5 h-3.5" /> Modify Details
+              </button>
             </div>
-          </div>
-
-          {/* Transit Parameters Inputs */}
-          <div className="flex-1 space-y-4">
-             <h2 className="text-xl font-serif text-[#1D4046] flex items-center gap-2">
-                <Navigation className="w-5 h-5 text-[#F59E0B]" /> Transit Parameters
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2 col-span-1 md:col-span-2 relative">
-                <label className="text-sm font-semibold text-[#1D4046]/60 flex items-center gap-2">
-                  <MapPin className="w-4 h-4 text-[#F59E0B]"/> Transit City
-                </label>
-                <div className="relative">
-                  <input
-                    value={transitPob}
-                    onChange={e => { setTransitPob(e.target.value); setShowSuggestionsFor("transit"); }}
-                    onKeyDown={handleKeyDown}
-                    onFocus={() => setShowSuggestionsFor("transit")}
-                    className="w-full p-2 bg-[#F9F7F1] border border-[#1D4046]/20 rounded-lg outline-none focus:ring-1 focus:ring-[#F59E0B]"
-                    placeholder="Search transit city..."
-                  />
-                  {isLoadingCity && showSuggestionsFor === "transit" && <div className="absolute right-3 top-2.5 animate-spin w-4 h-4 border-2 border-[#F59E0B] border-t-transparent rounded-full" />}
-                </div>
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-semibold text-[#1D4046]/60 flex items-center gap-2"><Calendar className="w-4 h-4 text-[#F59E0B]"/> Transit Date</label>
-                <input type="date" value={transitDateStr} onChange={e => setTransitDateStr(e.target.value)} className="w-full p-2 bg-[#F9F7F1] border border-[#1D4046]/20 rounded-lg outline-none" />
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-semibold text-[#1D4046]/60 flex items-center gap-2"><Clock className="w-4 h-4 text-[#F59E0B]"/> Transit Time</label>
-                <input type="time" value={transitTimeStr} onChange={e => setTransitTimeStr(e.target.value)} className="w-full p-2 bg-[#F9F7F1] border border-[#1D4046]/20 rounded-lg outline-none" />
-              </div>
-            </div>
-          </div>
-
-          {/* Shared Suggestions Dropdown */}
-          {showSuggestionsFor && suggestions.length > 0 && (
-            <div className="absolute z-50 w-[calc(100%-3rem)] md:w-[400px] mt-1 bg-white border border-[#1D4046]/10 rounded-xl shadow-xl overflow-hidden max-h-60 overflow-y-auto" style={{ top: "100%", left: showSuggestionsFor === "birth" ? "1.5rem" : "auto", right: showSuggestionsFor === "transit" ? "1.5rem" : "auto" }}>
-              {suggestions.map((s, i) => (
+          ) : (
+            <div className="p-6">
+              <div className="flex justify-between items-center mb-8 pb-4 border-b border-[#1D4046]/5">
+                <h2 className="text-2xl font-serif flex items-center gap-3">
+                  <Settings className="w-6 h-6 text-[#F59E0B]" /> Configuration
+                </h2>
                 <button
-                  key={i}
-                  onClick={() => handleSuggestionSelect(s)}
-                  onMouseEnter={() => setActiveSuggestionIndex(i)}
-                  className={`w-full text-left px-4 py-3 text-sm border-b border-[#1D4046]/5 last:border-0 transition-colors ${i === activeSuggestionIndex ? 'bg-[#F59E0B]/10 text-[#F59E0B] font-bold' : 'text-[#1D4046]/80 hover:bg-[#F9F7F1]'}`}
+                  onClick={() => setIsSettingsOpen(false)}
+                  className="p-2 hover:bg-[#F9F7F1] rounded-full transition-colors"
+                  aria-label="Collapse Settings"
                 >
-                  {s.name}
+                  <ChevronUp className="w-6 h-6" />
                 </button>
-              ))}
+              </div>
+
+              <div className="flex flex-col lg:flex-row gap-8 relative">
+                {/* Birth Profile Inputs */}
+                <div className="flex-1 space-y-6 lg:pr-8 lg:border-r border-[#1D4046]/10">
+                  <h3 className="text-sm font-bold text-[#F59E0B] uppercase tracking-[0.2em]">Birth Details</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-2 col-span-1 md:col-span-2 relative">
+                      <label className="text-xs font-bold text-[#1D4046]/40 uppercase flex items-center gap-2">
+                        <MapPin className="w-3.5 h-3.5"/> City of Birth
+                      </label>
+                      <div className="relative">
+                        <input
+                          value={birthPob}
+                          onChange={e => { setBirthPob(e.target.value); setShowSuggestionsFor("birth"); }}
+                          onKeyDown={handleKeyDown}
+                          onFocus={() => setShowSuggestionsFor("birth")}
+                          className="w-full p-3 bg-[#F9F7F1] border border-[#1D4046]/10 rounded-xl outline-none focus:ring-2 focus:ring-[#F59E0B]/20 transition-all"
+                          placeholder="Search birth city..."
+                        />
+                        {isLoadingCity && showSuggestionsFor === "birth" && <div className="absolute right-3 top-3.5 animate-spin w-4 h-4 border-2 border-[#F59E0B] border-t-transparent rounded-full" />}
+
+                    {/* Birth Suggestions Dropdown */}
+                    {showSuggestionsFor === "birth" && suggestions.length > 0 && (
+                      <div className="absolute z-50 w-full mt-1 bg-white border border-[#1D4046]/10 rounded-xl shadow-xl overflow-hidden max-h-60 overflow-y-auto shadow-[#1D4046]/20 top-full left-0">
+                        {suggestions.map((s, i) => (
+                          <button
+                            key={i}
+                            onClick={() => handleSuggestionSelect(s)}
+                            onMouseEnter={() => setActiveSuggestionIndex(i)}
+                            className={`w-full text-left px-4 py-3 text-sm border-b border-[#1D4046]/5 last:border-0 transition-colors ${i === activeSuggestionIndex ? 'bg-[#F59E0B]/10 text-[#F59E0B] font-bold' : 'text-[#1D4046]/80 hover:bg-[#F9F7F1]'}`}
+                          >
+                            {s.name}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold text-[#1D4046]/40 uppercase flex items-center gap-2"><Calendar className="w-3.5 h-3.5"/> Date</label>
+                      <input type="date" value={birthDateStr} onChange={e => setBirthDateStr(e.target.value)} className="w-full p-3 bg-[#F9F7F1] border border-[#1D4046]/10 rounded-xl outline-none" />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold text-[#1D4046]/40 uppercase flex items-center gap-2"><Clock className="w-3.5 h-3.5"/> Time</label>
+                      <input type="time" value={birthTimeStr} onChange={e => setBirthTimeStr(e.target.value)} className="w-full p-3 bg-[#F9F7F1] border border-[#1D4046]/10 rounded-xl outline-none" />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Transit Parameters Inputs */}
+                <div className="flex-1 space-y-6">
+                   <h3 className="text-sm font-bold text-[#1D4046]/40 uppercase tracking-[0.2em]">Transit Parameters</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-2 col-span-1 md:col-span-2 relative">
+                      <label className="text-xs font-bold text-[#1D4046]/40 uppercase flex items-center gap-2">
+                        <MapPin className="w-3.5 h-3.5"/> Current City
+                      </label>
+                      <div className="relative">
+                        <input
+                          value={transitPob}
+                          onChange={e => { setTransitPob(e.target.value); setShowSuggestionsFor("transit"); }}
+                          onKeyDown={handleKeyDown}
+                          onFocus={() => setShowSuggestionsFor("transit")}
+                          className="w-full p-3 bg-[#F9F7F1] border border-[#1D4046]/10 rounded-xl outline-none focus:ring-2 focus:ring-[#1D4046]/20 transition-all"
+                          placeholder="Search transit city..."
+                        />
+                        {isLoadingCity && showSuggestionsFor === "transit" && <div className="absolute right-3 top-3.5 animate-spin w-4 h-4 border-2 border-[#F59E0B] border-t-transparent rounded-full" />}
+
+                    {/* Transit Suggestions Dropdown */}
+                    {showSuggestionsFor === "transit" && suggestions.length > 0 && (
+                      <div className="absolute z-50 w-full mt-1 bg-white border border-[#1D4046]/10 rounded-xl shadow-xl overflow-hidden max-h-60 overflow-y-auto shadow-[#1D4046]/20 top-full left-0">
+                        {suggestions.map((s, i) => (
+                          <button
+                            key={i}
+                            onClick={() => handleSuggestionSelect(s)}
+                            onMouseEnter={() => setActiveSuggestionIndex(i)}
+                            className={`w-full text-left px-4 py-3 text-sm border-b border-[#1D4046]/5 last:border-0 transition-colors ${i === activeSuggestionIndex ? 'bg-[#F59E0B]/10 text-[#F59E0B] font-bold' : 'text-[#1D4046]/80 hover:bg-[#F9F7F1]'}`}
+                          >
+                            {s.name}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold text-[#1D4046]/40 uppercase flex items-center gap-2"><Calendar className="w-3.5 h-3.5"/> Date</label>
+                      <input type="date" value={transitDateStr} onChange={e => setTransitDateStr(e.target.value)} className="w-full p-3 bg-[#F9F7F1] border border-[#1D4046]/10 rounded-xl outline-none" />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold text-[#1D4046]/40 uppercase flex items-center gap-2"><Clock className="w-3.5 h-3.5"/> Time</label>
+                      <input type="time" value={transitTimeStr} onChange={e => setTransitTimeStr(e.target.value)} className="w-full p-3 bg-[#F9F7F1] border border-[#1D4046]/10 rounded-xl outline-none" />
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           )}
         </section>
@@ -374,7 +438,7 @@ export default function Home() {
         {activeTab === "dashboard" && (
           <div className="space-y-8 animate-in fade-in duration-500">
             <header className="flex flex-col md:flex-row justify-between items-center gap-4">
-              <h1 className="text-4xl font-serif text-[#1D4046] tracking-tight">Dashboard</h1>
+              <h1 className="text-4xl font-serif text-[#1D4046] tracking-tight">Your Personal Energy Forecast</h1>
               <div className="flex flex-wrap gap-4">
                 <div className="flex bg-white rounded-lg border border-[#1D4046]/10 p-1 shadow-sm">
                   {["Lahiri", "Raman", "Fagan-Bradley"].map(a => <button key={a} onClick={() => setAyanamsa(a as AyanamsaType)} className={`px-3 py-1 text-xs rounded-md transition-all ${ayanamsa === a ? 'bg-[#F59E0B] text-white font-bold' : 'text-[#1D4046]/60 hover:bg-[#F9F7F1]'}`}>{a}</button>)}
@@ -385,41 +449,99 @@ export default function Home() {
               </div>
             </header>
 
-            <section className="flex flex-col items-center justify-center p-12 bg-white rounded-3xl border border-[#1D4046]/10 shadow-xl relative overflow-hidden">
+            <section className="flex flex-col items-center justify-center p-12 bg-white rounded-[3rem] border border-[#1D4046]/10 shadow-xl relative overflow-hidden">
                 {sadeSati?.isActive && (
-                    <div className="absolute top-4 right-4 animate-pulse flex items-center gap-2 px-3 py-1 bg-red-50 text-red-600 rounded-full border border-red-100">
-                        <span className="w-2 h-2 bg-red-600 rounded-full" />
-                        <span className="text-[10px] font-bold uppercase tracking-widest">Sade Sati: {sadeSati.phase}</span>
+                    <div className="absolute top-6 right-6 animate-pulse flex items-center gap-2 px-4 py-2 bg-red-50 text-red-600 rounded-full border border-red-100 shadow-sm">
+                        <span className="w-2.5 h-2.5 bg-red-600 rounded-full" />
+                        <span className="text-[10px] font-bold uppercase tracking-[0.2em]">Sade Sati: {sadeSati.phase}</span>
                     </div>
                 )}
-                <div className="text-[#1D4046]/40 font-bold mb-6 uppercase tracking-widest text-xs">Gochara Strength</div>
-                <div className="relative w-56 h-56 flex items-center justify-center">
+
+                <div className="mb-10 text-center space-y-2">
+                  <h2 className="text-sm font-bold text-[#1D4046]/40 uppercase tracking-[0.3em]">Energy Forecast</h2>
+                  <p className="text-2xl font-serif text-[#1D4046]">
+                    {gocharaScore >= 70 ? "Highly Supportive Energies" :
+                     gocharaScore >= 50 ? "Balanced & Steady Growth" :
+                     gocharaScore >= 30 ? "Exercise Caution & Patience" :
+                     "Intense Karmic Period"}
+                  </p>
+                </div>
+
+                <div className="relative w-64 h-64 flex items-center justify-center">
                     <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
-                        <circle cx="50" cy="50" r="45" fill="none" stroke="#F9F7F1" strokeWidth="8" />
-                        <circle cx="50" cy="50" r="45" fill="none" stroke="#F59E0B" strokeWidth="8" strokeDasharray="283" strokeDashoffset={283 - (283 * gocharaScore) / 100} className="transition-all duration-1000 ease-out" strokeLinecap="round" />
+                        <circle cx="50" cy="50" r="45" fill="none" stroke="#F9F7F1" strokeWidth="10" />
+                        <circle cx="50" cy="50" r="45" fill="none" stroke="#F59E0B" strokeWidth="10" strokeDasharray="283" strokeDashoffset={283 - (283 * gocharaScore) / 100} className="transition-all duration-1000 ease-out" strokeLinecap="round" />
                     </svg>
                     <div className="absolute flex flex-col items-center">
-                        <span className="text-6xl font-serif font-bold text-[#1D4046]">{gocharaScore.toFixed(1)}<span className="text-2xl text-[#1D4046]/40">%</span></span>
-                        <span className={`text-xs mt-2 font-bold px-3 py-1 rounded-full ${gocharaScore >= 50 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>{gocharaScore >= 50 ? 'AUSPICIOUS' : 'CHALLENGING'}</span>
+                        <span className="text-7xl font-serif font-bold text-[#1D4046] tracking-tighter">{gocharaScore.toFixed(1)}<span className="text-2xl text-[#1D4046]/40 ml-1">%</span></span>
+                        <div className={`mt-4 px-4 py-1.5 rounded-full text-[10px] font-bold tracking-widest uppercase shadow-sm ${gocharaScore >= 50 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                          {gocharaScore >= 50 ? 'Auspicious' : 'Challenging'}
+                        </div>
                     </div>
                 </div>
-                {dasha && <div className="mt-10 text-xl text-[#1D4046] font-serif border-t border-[#1D4046]/5 pt-6 w-full text-center">Active Dasha: <span className="font-bold text-[#F59E0B]">{dasha.mahadasha.lord} / {dasha.antardasha.lord} / {dasha.pratyantardasha.lord}</span></div>}
+
+                {dasha && (
+                  <div className="mt-12 w-full max-w-md">
+                    <div className="flex items-center gap-4 mb-4">
+                      <div className="h-px flex-1 bg-gradient-to-r from-transparent to-[#1D4046]/10" />
+                      <span className="text-[10px] font-bold text-[#1D4046]/30 uppercase tracking-[0.2em]">Active Influence</span>
+                      <div className="h-px flex-1 bg-gradient-to-l from-transparent to-[#1D4046]/10" />
+                    </div>
+                    <div className="text-2xl text-[#1D4046] font-serif text-center">
+                      <span className="text-[#F59E0B]">{dasha.mahadasha.lord}</span>
+                      <span className="mx-2 text-[#1D4046]/20">/</span>
+                      <span>{dasha.antardasha.lord}</span>
+                      <span className="mx-2 text-[#1D4046]/20">/</span>
+                      <span className="text-sm opacity-60">{dasha.pratyantardasha.lord}</span>
+                    </div>
+                  </div>
+                )}
             </section>
 
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {planets.filter(p => ["Sun", "Moon", "Mars", "Mercury", "Jupiter", "Venus", "Saturn"].includes(p.name)).map((p, i) => (
-                    <div key={i} className="bg-white p-6 rounded-2xl border border-[#1D4046]/10 shadow-sm hover:shadow-md transition-all border-l-4 border-l-[#F59E0B]">
-                        <div className="flex justify-between items-start mb-4">
-                            <h3 className="font-serif text-lg font-bold">{p.name} in {p.house}{p.house === 1 ? 'st' : p.house === 2 ? 'nd' : p.house === 3 ? 'rd' : 'th'} House</h3>
-                            <span className="text-[10px] font-bold bg-[#F9F7F1] px-2 py-1 rounded border border-[#1D4046]/10 uppercase">{p.rasi}</span>
-                        </div>
-                        <p className="text-sm text-[#1D4046]/80 leading-relaxed mb-4">{predictions.placements.find(pr => pr.startsWith(p.name))?.split(': ')[1] || 'Analyzing transit impact...'}</p>
-                        <div className="flex gap-3">
-                            {p.vedha?.isObstructed && <span className="text-[10px] font-bold text-red-600 bg-red-50 px-2 py-0.5 rounded">Vedha: {p.vedha.obstructingPlanet}</span>}
-                            {p.isRetrograde && <span className="text-[10px] font-bold text-orange-600 bg-orange-50 px-2 py-0.5 rounded">Retrograde</span>}
-                        </div>
-                    </div>
-                ))}
+            <div className="space-y-12">
+              {/* Major Influences Section */}
+              <section className="space-y-6">
+                <h2 className="text-xs font-bold text-[#1D4046]/60 uppercase tracking-[0.3em] flex items-center gap-3">
+                  <div className="h-px w-8 bg-[#F59E0B]/40" /> Major Influences
+                </h2>
+                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {planets.filter(p => ["Sun", "Moon", dasha?.mahadasha.lord].includes(p.name)).map((p, i) => (
+                      <div key={i} className="bg-white p-6 rounded-[2rem] border border-[#1D4046]/10 shadow-sm hover:shadow-md transition-all border-l-4 border-l-[#F59E0B]">
+                          <div className="flex justify-between items-start mb-4">
+                              <h3 className="font-serif text-lg font-bold">{p.name} in {p.house}{p.house === 1 ? 'st' : p.house === 2 ? 'nd' : p.house === 3 ? 'rd' : 'th'} House</h3>
+                              <span className="text-[10px] font-bold bg-[#F9F7F1] px-2 py-1 rounded border border-[#1D4046]/10 uppercase">{p.rasi}</span>
+                          </div>
+                          <p className="text-sm text-[#1D4046]/80 leading-relaxed mb-4">{predictions.placements.find(pr => pr.startsWith(p.name))?.split(': ')[1] || 'Analyzing transit impact...'}</p>
+                          <div className="flex gap-3">
+                              {p.vedha?.isObstructed && <span className="text-[10px] font-bold text-red-600 bg-red-50 px-2 py-0.5 rounded">Vedha: {p.vedha.obstructingPlanet}</span>}
+                              {p.isRetrograde && <span className="text-[10px] font-bold text-orange-600 bg-orange-50 px-2 py-0.5 rounded">Retrograde</span>}
+                          </div>
+                      </div>
+                  ))}
+                </div>
+              </section>
+
+              {/* Supporting Transits Section */}
+              <section className="space-y-6">
+                <h2 className="text-xs font-bold text-[#1D4046]/60 uppercase tracking-[0.3em] flex items-center gap-3">
+                  <div className="h-px w-8 bg-[#1D4046]/20" /> Supporting Transits
+                </h2>
+                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 opacity-80">
+                  {planets.filter(p => ["Mars", "Mercury", "Jupiter", "Venus", "Saturn"].includes(p.name) && p.name !== dasha?.mahadasha.lord).map((p, i) => (
+                      <div key={i} className="bg-white/60 p-6 rounded-3xl border border-[#1D4046]/10 shadow-sm hover:shadow-md transition-all">
+                          <div className="flex justify-between items-start mb-4">
+                              <h3 className="font-serif text-base font-bold">{p.name} in {p.house}{p.house === 1 ? 'st' : p.house === 2 ? 'nd' : p.house === 3 ? 'rd' : 'th'}</h3>
+                              <span className="text-[10px] font-bold bg-[#F9F7F1] px-2 py-1 rounded border border-[#1D4046]/10 uppercase">{p.rasi}</span>
+                          </div>
+                          <p className="text-xs text-[#1D4046]/70 leading-relaxed mb-4 line-clamp-3">{predictions.placements.find(pr => pr.startsWith(p.name))?.split(': ')[1] || 'Analyzing transit impact...'}</p>
+                          <div className="flex gap-3">
+                              {p.vedha?.isObstructed && <span className="text-[10px] font-bold text-gray-400 bg-gray-50 px-2 py-0.5 rounded">Vedha</span>}
+                              {p.isRetrograde && <span className="text-[10px] font-bold text-orange-600/60 bg-orange-50 px-2 py-0.5 rounded">Retrograde</span>}
+                          </div>
+                      </div>
+                  ))}
+                </div>
+              </section>
             </div>
 
             {predictions.yogas.length > 0 && (
@@ -645,11 +767,11 @@ export default function Home() {
         )}
       </div>
 
-      <nav className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-[#1D4046] px-8 py-4 rounded-full flex gap-12 shadow-2xl items-center z-50 transition-all">
+      <nav className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-[#1D4046]/90 backdrop-blur-md px-8 py-4 rounded-full flex gap-12 shadow-2xl items-center z-50 transition-all border border-white/10">
         {[{id: "dashboard", icon: Sun, label: "Sky"}, {id: "timeline", icon: Moon, label: "Time"}, {id: "charts", icon: Info, label: "Deep"}, {id: "remedies", icon: Sparkles, label: "Upaya"}].map(tab => (
             <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`flex flex-col items-center gap-1 transition-all ${activeTab === tab.id ? 'text-[#F59E0B] scale-110' : 'text-white/40 hover:text-white/80'}`}>
                 <tab.icon className="w-5 h-5" />
-                <span className="text-[10px] font-bold uppercase tracking-tighter">{tab.label}</span>
+                <span className="text-[10px] font-bold uppercase tracking-[0.1em]">{tab.label}</span>
             </button>
         ))}
       </nav>
