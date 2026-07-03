@@ -11,7 +11,10 @@ export interface PlanetData {
     rasi: string;
     house: number;
     nakshatra: string;
+    pada: number;
     isRetrograde: boolean;
+    isCombust?: boolean;
+    kakshya?: string;
     vedha?: {
         isObstructed: boolean;
         obstructingPlanet?: string;
@@ -323,22 +326,69 @@ export function calculateTransits(date: Date, lat: number = 28.6139, lon: number
         return (l_trop - ayanamsa + 360) % 360;
     };
     const lagnaSid = calcLagna(time), lagnaIdx = Math.floor(lagnaSid / 30);
-    const raw: Array<{ name: string, symbol: string, longitude: number, degree: string, rasiIdx: number, isRetrograde: boolean }> = [], timeDelta = time.AddDays(0.1);
+    const raw: Array<{ name: string, symbol: string, longitude: number, degree: string, rasiIdx: number, isRetrograde: boolean, isCombust?: boolean, kakshya?: string, pada: number }> = [], timeDelta = time.AddDays(0.1);
+
     PLANET_MAP.forEach(p => {
         const pos = Ast.GeoVector(p.body, time, true), ecl = Ast.Ecliptic(pos), sidereal = (ecl.elon - ayanamsa + 360) % 360;
         const posDelta = Ast.GeoVector(p.body, timeDelta, true), eclDelta = Ast.Ecliptic(posDelta);
         let diff = eclDelta.elon - ecl.elon; if (diff > 180) diff -= 360; if (diff < -180) diff += 360;
-        raw.push({ name: p.name, symbol: p.symbol, longitude: sidereal, degree: formatDegree(sidereal % 30), rasiIdx: Math.floor(sidereal / 30), isRetrograde: (p.name !== "Sun" && p.name !== "Moon" && diff < 0) });
+
+        const rasiDeg = sidereal % 30;
+        const kakshyaLords = ["Saturn", "Jupiter", "Mars", "Sun", "Venus", "Mercury", "Moon", "Lagna"];
+        const kakshyaIdx = Math.floor(rasiDeg / 3.75);
+        const nakshatraDeg = 360 / 27;
+        const pada = Math.floor((sidereal % nakshatraDeg) / (nakshatraDeg / 4)) + 1;
+
+        raw.push({
+            name: p.name,
+            symbol: p.symbol,
+            longitude: sidereal,
+            degree: formatDegree(rasiDeg),
+            rasiIdx: Math.floor(sidereal / 30),
+            isRetrograde: (p.name !== "Sun" && p.name !== "Moon" && diff < 0),
+            kakshya: kakshyaLords[kakshyaIdx],
+            pada
+        });
     });
+
+    const sun = raw.find(p => p.name === "Sun");
+    if (sun) {
+        raw.forEach(p => {
+            if (["Mars", "Mercury", "Jupiter", "Venus", "Saturn"].includes(p.name)) {
+                let dist = Math.abs(p.longitude - sun.longitude);
+                if (dist > 180) dist = 360 - dist;
+                const limits: { [key: string]: number } = { "Mars": 17, "Mercury": 14, "Jupiter": 11, "Venus": 10, "Saturn": 15 };
+                if (p.name === "Mercury" && p.isRetrograde) limits["Mercury"] = 12;
+                if (p.name === "Venus" && p.isRetrograde) limits["Venus"] = 8;
+                p.isCombust = dist < (limits[p.name] || 0);
+            }
+        });
+    }
+
     const rahuSid = (getMeanRahu(time) - ayanamsa + 360) % 360;
-    raw.push({ name: "Rahu", symbol: "Ra", longitude: rahuSid, degree: formatDegree(rahuSid % 30), rasiIdx: Math.floor(rahuSid / 30), isRetrograde: true });
-    raw.push({ name: "Ketu", symbol: "Ke", longitude: (rahuSid + 180) % 360, degree: formatDegree(((rahuSid + 180) % 360) % 30), rasiIdx: Math.floor(((rahuSid + 180) % 360) / 30), isRetrograde: true });
+    const rRasiDeg = rahuSid % 30;
+    const kRasiDeg = (rahuSid + 180) % 360 % 30;
+    const nDeg = 360/27;
+    raw.push({ name: "Rahu", symbol: "Ra", longitude: rahuSid, degree: formatDegree(rRasiDeg), rasiIdx: Math.floor(rahuSid / 30), isRetrograde: true, kakshya: ["Saturn", "Jupiter", "Mars", "Sun", "Venus", "Mercury", "Moon", "Lagna"][Math.floor(rRasiDeg / 3.75)], pada: Math.floor((rahuSid % nDeg) / (nDeg / 4)) + 1 });
+    raw.push({ name: "Ketu", symbol: "Ke", longitude: (rahuSid + 180) % 360, degree: formatDegree(kRasiDeg), rasiIdx: Math.floor(((rahuSid + 180) % 360) / 30), isRetrograde: true, kakshya: ["Saturn", "Jupiter", "Mars", "Sun", "Venus", "Mercury", "Moon", "Lagna"][Math.floor(kRasiDeg / 3.75)], pada: Math.floor(((rahuSid + 180) % 360 % nDeg) / (nDeg / 4)) + 1 });
 
     let refRasi = lagnaIdx;
     if (refPlanet === "Moon") { const m = raw.find(p => p.name === "Moon"); if (m) refRasi = m.rasiIdx; }
     else if (refPlanet !== "Ascendant") { const r = raw.find(p => p.name === refPlanet); if (r) refRasi = r.rasiIdx; }
 
-    const planets: PlanetData[] = [{ name: "Ascendant", symbol: "As", longitude: lagnaSid, degree: formatDegree(lagnaSid % 30), rasi: RASIS[lagnaIdx], house: (lagnaIdx - refRasi + 12) % 12 + 1, nakshatra: NAKSHATRAS[Math.floor(lagnaSid / (360 / 27))], isRetrograde: false }];
+    const lagnaRasiDeg = lagnaSid % 30;
+    const planets: PlanetData[] = [{
+        name: "Ascendant",
+        symbol: "As",
+        longitude: lagnaSid,
+        degree: formatDegree(lagnaRasiDeg),
+        rasi: RASIS[lagnaIdx],
+        house: (lagnaIdx - refRasi + 12) % 12 + 1,
+        nakshatra: NAKSHATRAS[Math.floor(lagnaSid / (360 / 27))],
+        pada: Math.floor((lagnaSid % (360/27)) / ((360/27) / 4)) + 1,
+        isRetrograde: false,
+        kakshya: ["Saturn", "Jupiter", "Mars", "Sun", "Venus", "Mercury", "Moon", "Lagna"][Math.floor(lagnaRasiDeg / 3.75)]
+    }];
     raw.forEach(p => planets.push({ ...p, rasi: RASIS[p.rasiIdx], house: (p.rasiIdx - refRasi + 12) % 12 + 1, nakshatra: NAKSHATRAS[Math.floor(p.longitude / (360 / 27))] }));
 
     const d1: DivisionalChartData = { houses: {}, houseRasis: {} }, d9: DivisionalChartData = { houses: {}, houseRasis: {} }, d60: DivisionalChartData = { houses: {}, houseRasis: {} };

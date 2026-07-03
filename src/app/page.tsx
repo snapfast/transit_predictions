@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, KeyboardEvent } from "react";
-import { calculateTransits, PlanetData, DivisionalChartData, Predictions, DashaInfo, Remedy, AyanamsaType, AshtakavargaData } from "@/lib/astrology";
+import { calculateTransits, PlanetData, DivisionalChartData, Predictions, DashaInfo, SadeSatiInfo, Remedy, AyanamsaType, AshtakavargaData } from "@/lib/astrology";
 import KundliChart, { ChartStyle } from "@/components/KundliChart";
 import { Clock, MapPin, Calendar, Sun, Moon, Info, Sparkles } from "lucide-react";
 
@@ -26,8 +26,11 @@ export default function Home() {
   const [d60Data, setD60Data] = useState<DivisionalChartData | null>(null);
   const [predictions, setPredictions] = useState<Predictions>({ placements: [], aspects: [], yogas: [] });
   const [dasha, setDasha] = useState<DashaInfo | undefined>(undefined);
+  const [sadeSati, setSadeSati] = useState<SadeSatiInfo | undefined>(undefined);
+  const [natalChart, setNatalChart] = useState<DivisionalChartData | null>(null);
   const [gocharaScore, setGocharaScore] = useState<number>(50);
   const [timelineScores, setTimelineScores] = useState<number[]>([]);
+  const [timelineEvents, setTimelineEvents] = useState<Array<{ day: number, label: string }>>([]);
   const [ashtakavarga, setAshtakavarga] = useState<AshtakavargaData | undefined>(undefined);
   const [remedies, setRemedies] = useState<Remedy[]>([]);
   const [activeTab, setActiveTab] = useState("dashboard");
@@ -39,8 +42,15 @@ export default function Home() {
   useEffect(() => {
     queueMicrotask(() => {
       const now = new Date();
-      setDateStr(now.toISOString().split("T")[0]);
-      setTimeStr(now.toTimeString().slice(0, 5));
+      // Use local date parts to prevent timezone shifts (e.g., getting yesterday's date in UTC)
+      const year = now.getFullYear();
+      const month = String(now.getMonth() + 1).padStart(2, '0');
+      const day = String(now.getDate()).padStart(2, '0');
+      const hours = String(now.getHours()).padStart(2, '0');
+      const minutes = String(now.getMinutes()).padStart(2, '0');
+
+      setDateStr(`${year}-${month}-${day}`);
+      setTimeStr(`${hours}:${minutes}`);
     });
   }, []);
 
@@ -118,13 +128,29 @@ export default function Home() {
 
       const res = calculateTransits(calculationDate, lat, lon, birthDetails, ayanamsa, refPlanetName);
 
-      // Calculate timeline scores
+      // Calculate timeline scores and events (Optimized: No birthDetails to skip redundant heavy logic)
       const scores: number[] = [];
+      const events: Array<{ day: number, label: string }> = [];
       const startTime = new Date(calculationDate.getTime() - 30 * 24 * 60 * 60 * 1000);
-      for (let i = 0; i <= 60; i += 2) {
+      const lastPositions: {[key: string]: string} = {};
+
+      for (let i = 0; i <= 60; i++) {
         const d = new Date(startTime.getTime() + i * 24 * 60 * 60 * 1000);
-        const t = calculateTransits(d, lat, lon, birthDetails, ayanamsa, refPlanetName);
-        scores.push(t.gocharaScore);
+        // By omitting birthDetails here, calculateTransits skips Dasha, Sade Sati, and Ashtakavarga recursions
+        const t = calculateTransits(d, lat, lon, undefined, ayanamsa, refPlanetName);
+
+        if (i % 2 === 0) {
+          scores.push(t.gocharaScore);
+        }
+
+        t.planets.forEach(p => {
+          if (["Sun", "Moon", "Mars", "Mercury", "Jupiter", "Venus", "Saturn"].includes(p.name)) {
+            if (lastPositions[p.name] && lastPositions[p.name] !== p.rasi) {
+              events.push({ day: i - 30, label: `${p.name} enters ${p.rasi}` });
+            }
+            lastPositions[p.name] = p.rasi;
+          }
+        });
       }
 
       queueMicrotask(() => {
@@ -137,8 +163,14 @@ export default function Home() {
         setSadeSati(res.sadeSati);
         setGocharaScore(res.gocharaScore);
         setTimelineScores(scores);
+        setTimelineEvents(events);
         setAshtakavarga(res.ashtakavarga);
         setRemedies(res.remedies);
+
+        if (birthDetails) {
+            const natal = calculateTransits(birthDetails.date, birthDetails.lat, birthDetails.lon);
+            setNatalChart(natal.d1);
+        }
       });
     }, 200);
 
@@ -266,6 +298,12 @@ export default function Home() {
             </header>
 
             <section className="flex flex-col items-center justify-center p-12 bg-white rounded-3xl border border-[#1D4046]/10 shadow-xl relative overflow-hidden">
+                {sadeSati?.isActive && (
+                    <div className="absolute top-4 right-4 animate-pulse flex items-center gap-2 px-3 py-1 bg-red-50 text-red-600 rounded-full border border-red-100">
+                        <span className="w-2 h-2 bg-red-600 rounded-full" />
+                        <span className="text-[10px] font-bold uppercase tracking-widest">Sade Sati: {sadeSati.phase}</span>
+                    </div>
+                )}
                 <div className="text-[#1D4046]/40 font-bold mb-6 uppercase tracking-widest text-xs">Gochara Strength</div>
                 <div className="relative w-56 h-56 flex items-center justify-center">
                     <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
@@ -327,16 +365,38 @@ export default function Home() {
                         <div className="text-4xl font-serif text-[#F59E0B]">{gocharaScore.toFixed(1)}%</div>
                     </div>
                     <input type="range" min="-30" max="30" value={scrubDays} onChange={e => setScrubDays(parseInt(e.target.value))} className="w-full h-1.5 bg-[#F9F7F1] rounded-lg appearance-none cursor-pointer accent-[#F59E0B]" />
-                    <div className="h-40 w-full bg-[#F9F7F1] rounded-2xl border border-[#1D4046]/5 p-4 relative overflow-hidden">
+                    <div className="h-48 w-full bg-[#F9F7F1] rounded-2xl border border-[#1D4046]/5 p-4 relative overflow-hidden">
                         <svg className="w-full h-full" preserveAspectRatio="none" viewBox="0 0 100 100">
-                            <path d={`M ${timelineScores.map((s, i) => `${(i / (timelineScores.length - 1)) * 100},${100 - s}`).join(' L ')}`} fill="none" stroke="#F59E0B" strokeWidth="3" strokeLinecap="round" />
+                            {timelineScores.length > 0 && (
+                              <path d={`M ${timelineScores.map((s, i) => `${(i / (timelineScores.length - 1)) * 100},${100 - s}`).join(' L ')}`} fill="none" stroke="#F59E0B" strokeWidth="3" strokeLinecap="round" />
+                            )}
                             <line x1="50" y1="0" x2="50" y2="100" stroke="#1D4046" strokeWidth="1" strokeDasharray="4" strokeOpacity="0.2" />
+
+                            {timelineEvents.map((ev, idx) => (
+                                <g key={idx}>
+                                    <line x1={50 + (ev.day / 30) * 50} y1="0" x2={50 + (ev.day / 30) * 50} y2="100" stroke="#F59E0B" strokeWidth="0.5" strokeDasharray="2" opacity="0.5" />
+                                    <circle cx={50 + (ev.day / 30) * 50} cy="10" r="1.5" fill="#F59E0B" />
+                                </g>
+                            ))}
+
                             <circle cx={50 + (scrubDays / 30) * 50} cy={100 - gocharaScore} r="4" fill="#F59E0B" />
                         </svg>
+
+                        {/* Event Tooltips (Subtle) */}
+                        <div className="absolute top-2 left-0 w-full flex justify-center pointer-events-none">
+                            {timelineEvents.filter(e => Math.abs(e.day - scrubDays) < 1).map((e, i) => (
+                                <div key={i} className="bg-[#1D4046] text-white text-[10px] px-2 py-1 rounded shadow-lg animate-in fade-in zoom-in">
+                                    {e.label}
+                                </div>
+                            ))}
+                        </div>
                     </div>
                 </section>
                 <div className="grid md:grid-cols-2 gap-8">
-                    <div className="bg-white p-6 rounded-3xl border border-[#1D4046]/10 shadow-sm"><h2 className="text-center font-serif text-xl mb-6">Transit Chart (D1)</h2><KundliChart data={chartData!} style={chartStyle} /></div>
+                    <div className="bg-white p-6 rounded-3xl border border-[#1D4046]/10 shadow-sm">
+                      <h2 className="text-center font-serif text-xl mb-6">Transit Chart (D1)</h2>
+                      {chartData ? <KundliChart data={chartData} style={chartStyle} /> : <div className="h-64 bg-[#F9F7F1] rounded animate-pulse" />}
+                    </div>
                     <div className="bg-white p-8 rounded-3xl border border-[#1D4046]/10 shadow-sm">
                         <h2 className="font-serif text-xl mb-6">Detailed Forecast</h2>
                         <ul className="space-y-4">
@@ -357,14 +417,63 @@ export default function Home() {
                         {["North", "South"].map(s => <button key={s} onClick={() => setChartStyle(s as ChartStyle)} className={`px-4 py-1 text-xs rounded-md transition-all ${chartStyle === s ? 'bg-[#F59E0B] text-white font-bold' : 'text-[#1D4046]/60 hover:bg-[#F9F7F1]'}`}>{s} Indian</button>)}
                     </div>
                 </header>
-                <div className="grid lg:grid-cols-3 gap-8">
-                    {[{t: "D1 Transit", d: chartData}, {t: "D9 Navamsa", d: d9Data}, {t: "D60 Shashtiamsa", d: d60Data}].map((c, i) => (
+                <div className="grid lg:grid-cols-2 gap-8">
+                    <div className="bg-white p-6 rounded-3xl border border-[#1D4046]/10 shadow-sm">
+                        <h2 className="text-center font-serif text-lg mb-6 text-[#F59E0B]">Natal Chart (Birth)</h2>
+                        {natalChart ? <KundliChart data={natalChart} style={chartStyle} /> : <div className="h-64 bg-[#F9F7F1] rounded animate-pulse flex items-center justify-center text-xs opacity-40 italic">Set birth time to see natal chart...</div>}
+                    </div>
+                    <div className="bg-white p-6 rounded-3xl border border-[#1D4046]/10 shadow-sm ring-2 ring-[#F59E0B]/20">
+                        <h2 className="text-center font-serif text-lg mb-6 text-[#1D4046]">Transit Chart (Now)</h2>
+                        {chartData ? <KundliChart data={chartData} style={chartStyle} /> : <div className="h-64 bg-[#F9F7F1] rounded animate-pulse" />}
+                    </div>
+                </div>
+
+                <div className="grid lg:grid-cols-2 gap-8">
+                    {[{t: "D9 Navamsa", d: d9Data}, {t: "D60 Shashtiamsa", d: d60Data}].map((c, i) => (
                         <div key={i} className="bg-white p-6 rounded-3xl border border-[#1D4046]/10 shadow-sm">
                             <h2 className="text-center font-serif text-lg mb-6">{c.t}</h2>
                             {c.d ? <KundliChart data={c.d} style={chartStyle} /> : <div className="h-64 bg-[#F9F7F1] rounded animate-pulse" />}
                         </div>
                     ))}
                 </div>
+                <section className="bg-white p-8 rounded-3xl border border-[#1D4046]/10 shadow-sm">
+                    <h2 className="text-2xl font-serif mb-8 text-[#1D4046]">Detailed Planetary Positions</h2>
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-left text-sm">
+                            <thead className="border-b border-[#1D4046]/10">
+                                <tr className="text-[#1D4046]/40 font-bold text-xs uppercase">
+                                    <th className="pb-4">Planet</th>
+                                    <th className="pb-4">Degree</th>
+                                    <th className="pb-4">Rasi</th>
+                                    <th className="pb-4">Nakshatra</th>
+                                    <th className="pb-4">Pada</th>
+                                    <th className="pb-4">Kakshya</th>
+                                    <th className="pb-4">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-[#1D4046]/5">
+                                {planets.map((p) => (
+                                    <tr key={p.name} className="group hover:bg-[#F9F7F1]/50">
+                                        <td className="py-4 font-bold text-[#1D4046]">{p.name}</td>
+                                        <td className="py-4">{p.degree}</td>
+                                        <td className="py-4">{p.rasi}</td>
+                                        <td className="py-4">{p.nakshatra}</td>
+                                        <td className="py-4 text-center">{p.pada}</td>
+                                        <td className="py-4">{p.kakshya || "-"}</td>
+                                        <td className="py-4">
+                                            <div className="flex flex-wrap gap-1">
+                                                {p.isRetrograde && <span className="px-2 py-0.5 bg-orange-50 text-orange-600 text-[10px] font-bold rounded">RET</span>}
+                                                {p.isCombust && <span className="px-2 py-0.5 bg-red-50 text-red-600 text-[10px] font-bold rounded">COM</span>}
+                                                {p.vedha?.isObstructed && <span className="px-2 py-0.5 bg-gray-50 text-gray-600 text-[10px] font-bold rounded">VED</span>}
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
                 {ashtakavarga && (
                     <section className="bg-white p-8 rounded-3xl border border-[#1D4046]/10 shadow-sm">
                         <h2 className="text-2xl font-serif mb-8 text-[#1D4046]">Ashtakavarga Analysis (SAV)</h2>
