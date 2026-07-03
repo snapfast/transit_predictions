@@ -35,6 +35,185 @@ export interface Predictions {
     aspects: string[];
 }
 
+export interface DashaLevel {
+    lord: string;
+    start: Date;
+    end: Date;
+}
+
+export interface DashaInfo {
+    mahadasha: DashaLevel;
+    antardasha: DashaLevel;
+}
+
+export interface SadeSatiInfo {
+    isActive: boolean;
+    phase: 'Rising' | 'Peak' | 'Setting' | 'None';
+}
+
+export interface Remedy {
+    planet: string;
+    condition: string;
+    mantra: string;
+    charity: string;
+    lifestyle: string;
+}
+
+export function getRemedies(planets: PlanetData[], dasha?: DashaInfo, sadeSati?: SadeSatiInfo): Remedy[] {
+    const remedies: Remedy[] = [];
+
+    if (sadeSati?.isActive) {
+        remedies.push({
+            planet: "Saturn",
+            condition: `Sade Sati (${sadeSati.phase} Phase)`,
+            mantra: "Om Sham Shanaishcharaya Namaha",
+            charity: "Donate black sesame seeds or iron on Saturdays",
+            lifestyle: "Practice discipline and serve the elderly"
+        });
+    }
+
+    if (dasha) {
+        const dashaLord = dasha.mahadasha.lord;
+        remedies.push(getPlanetRemedy(dashaLord, "Active Mahadasha Lord"));
+    }
+
+    // Check for major afflictions (simplified)
+    planets.forEach(p => {
+        if (p.isRetrograde && ["Mars", "Saturn", "Rahu", "Ketu"].includes(p.name)) {
+            remedies.push(getPlanetRemedy(p.name, `Retrograde ${p.name}`));
+        }
+    });
+
+    return remedies;
+}
+
+function getPlanetRemedy(planet: string, condition: string): Remedy {
+    const data: { [key: string]: { mantra: string, charity: string, lifestyle: string } } = {
+        "Sun": { mantra: "Om Ghrini Suryaya Namaha", charity: "Donate wheat or copper on Sundays", lifestyle: "Wake up before sunrise, offer water to Sun" },
+        "Moon": { mantra: "Om Som Somaya Namaha", charity: "Donate rice or white cloth on Mondays", lifestyle: "Respect mother, stay hydrated" },
+        "Mars": { mantra: "Om Ang Angarkaya Namaha", charity: "Donate red lentils on Tuesdays", lifestyle: "Physical exercise, avoid anger" },
+        "Mercury": { mantra: "Om Bum Budhaya Namaha", charity: "Donate green gram on Wednesdays", lifestyle: "Read books, plant trees" },
+        "Jupiter": { mantra: "Om Gram Greem Graum Sah Gurave Namaha", charity: "Donate yellow sweets or turmeric on Thursdays", lifestyle: "Respect teachers, study scriptures" },
+        "Venus": { mantra: "Om Shum Shukraya Namaha", charity: "Donate white sweets or silk on Fridays", lifestyle: "Maintain cleanliness, appreciate art" },
+        "Saturn": { mantra: "Om Sham Shanaishcharaya Namaha", charity: "Donate mustard oil or black clothes on Saturdays", lifestyle: "Hard work, punctuality" },
+        "Rahu": { mantra: "Om Raam Rahave Namaha", charity: "Donate coconuts or coal", lifestyle: "Bird feeding, avoid illusions" },
+        "Ketu": { mantra: "Om Kem Ketave Namaha", charity: "Donate multi-colored blankets", lifestyle: "Meditation, spiritual detachment" }
+    };
+
+    const remedy = data[planet] || { mantra: "Om Namah Shivaya", charity: "General donation", lifestyle: "Meditate" };
+    return { planet, condition, ...remedy };
+}
+
+export function calculateGocharaScore(planets: PlanetData[], dasha?: DashaInfo): number {
+    let score = 50; // Neutral start
+
+    planets.forEach(p => {
+        // Benefics in good houses from Moon
+        const isBenefic = ["Jupiter", "Venus", "Mercury", "Moon"].includes(p.name);
+        const houseFromMoon = p.house; // This is actually from Lagna in current calculateTransits...
+        // Wait, calculateTransits currently sets house relative to Lagna.
+        // We need house relative to Moon for Gochara.
+
+        // Let's assume p.house passed here is from Moon for scoring purposes
+        // if we call it correctly or adjust logic.
+
+        if (isBenefic) {
+            if ([1, 2, 4, 5, 7, 9, 10, 11].includes(houseFromMoon)) score += 5;
+        } else {
+            if ([3, 6, 11].includes(houseFromMoon)) score += 7;
+            else score -= 3;
+        }
+    });
+
+    if (dasha) {
+        // Boost if dasha lord is in good position
+        const dashaLord = planets.find(p => p.name === dasha.mahadasha.lord);
+        if (dashaLord && [1, 5, 9, 10, 11].includes(dashaLord.house)) score += 10;
+    }
+
+    return Math.min(Math.max(score, 0), 100);
+}
+
+export function calculateVimshottariDasha(birthDate: Date, moonLongitude: number, targetDate: Date = new Date()): DashaInfo {
+    const totalCycle = 120;
+    const nakshatraLength = 360 / 27;
+    const dashaLords = ["Ketu", "Venus", "Sun", "Moon", "Mars", "Rahu", "Jupiter", "Saturn", "Mercury"];
+    const dashaPeriods = [7, 20, 6, 10, 7, 18, 16, 19, 17];
+
+    const nakshatraIndex = Math.floor(moonLongitude / nakshatraLength);
+    const lordIndex = nakshatraIndex % 9;
+    const passedInNakshatra = (moonLongitude % nakshatraLength) / nakshatraLength;
+
+    const firstDashaTotalYears = dashaPeriods[lordIndex];
+    const firstDashaRemainingYears = firstDashaTotalYears * (1 - passedInNakshatra);
+
+    let currentDate = new Date(birthDate);
+
+    // Add first (partial) dasha
+    let dashaEnd = new Date(currentDate);
+    dashaEnd.setFullYear(dashaEnd.getFullYear() + Math.floor(firstDashaRemainingYears));
+    dashaEnd.setMonth(dashaEnd.getMonth() + Math.floor((firstDashaRemainingYears % 1) * 12));
+
+    let currentLordIndex = lordIndex;
+
+    // Iterate through Mahadashas until we find the current one
+    while (dashaEnd < targetDate) {
+        currentDate = new Date(dashaEnd);
+        currentLordIndex = (currentLordIndex + 1) % 9;
+        const years = dashaPeriods[currentLordIndex];
+        dashaEnd = new Date(currentDate);
+        dashaEnd.setFullYear(dashaEnd.getFullYear() + years);
+    }
+
+    const currentMahadasha = {
+        lord: dashaLords[currentLordIndex],
+        start: new Date(currentDate),
+        end: new Date(dashaEnd)
+    };
+
+    // Calculate Antardasha
+    const mdDurationMs = dashaEnd.getTime() - currentDate.getTime();
+    let adStart = new Date(currentDate);
+
+    for (let i = 0; i < 9; i++) {
+        const adLord = dashaLords[(currentLordIndex + i) % 9];
+        const adYears = dashaPeriods[(currentLordIndex + i) % 9];
+        const adDurationMs = (adYears / totalCycle) * mdDurationMs;
+        const adEnd = new Date(adStart.getTime() + adDurationMs);
+
+        if (adEnd > targetDate) {
+            return {
+                mahadasha: currentMahadasha,
+                antardasha: {
+                    lord: adLord,
+                    start: adStart,
+                    end: adEnd
+                }
+            };
+        }
+        adStart = adEnd;
+    }
+
+    // Fallback
+    return {
+        mahadasha: currentMahadasha,
+        antardasha: { lord: dashaLords[currentLordIndex], start: currentDate, end: dashaEnd }
+    };
+}
+
+export function calculateSadeSati(natalMoonLongitude: number, transitSaturnLongitude: number): SadeSatiInfo {
+    const natalMoonRasi = Math.floor(natalMoonLongitude / 30);
+    const transitSaturnRasi = Math.floor(transitSaturnLongitude / 30);
+
+    const diff = (transitSaturnRasi - natalMoonRasi + 12) % 12;
+
+    if (diff === 11) return { isActive: true, phase: 'Rising' };
+    if (diff === 0) return { isActive: true, phase: 'Peak' };
+    if (diff === 1) return { isActive: true, phase: 'Setting' };
+
+    return { isActive: false, phase: 'None' };
+}
+
 export function generatePredictions(planets: PlanetData[]): Predictions {
     const placements: string[] = [];
     const aspects: string[] = [];
@@ -173,7 +352,17 @@ function formatDegree(deg: number): string {
     return `${d}° ${m}'`;
 }
 
-export function calculateTransits(date: Date, lat: number = 28.6139, lon: number = 77.2090): { planets: PlanetData[], d1: DivisionalChartData, d9: DivisionalChartData, d60: DivisionalChartData, predictions: Predictions } {
+export function calculateTransits(date: Date, lat: number = 28.6139, lon: number = 77.2090, birthDetails?: { date: Date, lat: number, lon: number }): {
+    planets: PlanetData[],
+    d1: DivisionalChartData,
+    d9: DivisionalChartData,
+    d60: DivisionalChartData,
+    predictions: Predictions,
+    dasha?: DashaInfo,
+    sadeSati?: SadeSatiInfo,
+    gocharaScore: number,
+    remedies: Remedy[]
+} {
     const time = Ast.MakeTime(date);
     const ayanamsa = getLahiriAyanamsa(time);
 
@@ -403,11 +592,44 @@ export function calculateTransits(date: Date, lat: number = 28.6139, lon: number
 
     const predictions = generatePredictions(planets);
 
+    let dasha, sadeSati;
+    let gocharaScore = 50;
+
+    // For Gochara, we often look from Moon.
+    const moon = planets.find(p => p.name === "Moon");
+    const planetsFromMoon = planets.map(p => {
+        if (!moon) return p;
+        const moonRasiIdx = RASIS.indexOf(moon.rasi);
+        const planetRasiIdx = RASIS.indexOf(p.rasi);
+        const houseFromMoon = ((planetRasiIdx - moonRasiIdx + 12) % 12) + 1;
+        return { ...p, house: houseFromMoon };
+    });
+
+    if (birthDetails) {
+        const birthTransits = calculateTransits(birthDetails.date, birthDetails.lat, birthDetails.lon);
+        const natalMoon = birthTransits.planets.find(p => p.name === "Moon");
+        const transitSaturn = planets.find(p => p.name === "Saturn");
+
+        if (natalMoon) {
+            dasha = calculateVimshottariDasha(birthDetails.date, natalMoon.longitude, date);
+            if (transitSaturn) {
+                sadeSati = calculateSadeSati(natalMoon.longitude, transitSaturn.longitude);
+            }
+        }
+    }
+
+    gocharaScore = calculateGocharaScore(planetsFromMoon, dasha);
+    const remedies = getRemedies(planets, dasha, sadeSati);
+
     return {
         planets,
         d1: { houses: d1Houses, houseRasis: d1HouseRasis },
         d9: { houses: d9Houses, houseRasis: d9HouseRasis },
         d60: { houses: d60Houses, houseRasis: d60HouseRasis },
-        predictions
+        predictions,
+        dasha,
+        sadeSati,
+        gocharaScore,
+        remedies
     };
 }

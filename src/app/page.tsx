@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, KeyboardEvent } from "react";
-import { calculateTransits, PlanetData, DivisionalChartData, Predictions } from "@/lib/astrology";
+import { calculateTransits, PlanetData, DivisionalChartData, Predictions, DashaInfo, SadeSatiInfo, Remedy } from "@/lib/astrology";
 import KundliChart from "@/components/KundliChart";
 import { Clock, MapPin, Calendar } from "lucide-react";
 
@@ -31,7 +31,13 @@ export default function Home() {
   const [d9Data, setD9Data] = useState<DivisionalChartData | null>(null);
   const [d60Data, setD60Data] = useState<DivisionalChartData | null>(null);
   const [predictions, setPredictions] = useState<Predictions>({ placements: [], aspects: [] });
+  const [dasha, setDasha] = useState<DashaInfo | undefined>(undefined);
+  const [sadeSati, setSadeSati] = useState<SadeSatiInfo | undefined>(undefined);
+  const [gocharaScore, setGocharaScore] = useState<number>(50);
+  const [remedies, setRemedies] = useState<Remedy[]>([]);
   const [activeTab, setActiveTab] = useState("dashboard");
+
+  const [scrubDays, setScrubDays] = useState<number>(0);
 
   useEffect(() => {
     // Initialize with current date/time on client (use a microtask to avoid cascading renders)
@@ -170,17 +176,26 @@ export default function Home() {
         const [year, month, day] = dateStr.split('-').map(Number);
         const [hour, minute] = timeStr.split(':').map(Number);
 
-        const date = new Date(year, month - 1, day, hour, minute);
+        let date = new Date(year, month - 1, day, hour, minute);
+        if (scrubDays !== 0) {
+          date = new Date(date.getTime() + scrubDays * 24 * 60 * 60 * 1000);
+        }
 
         if (isNaN(date.getTime())) return;
 
-        const { planets: p, d1, d9, d60, predictions: preds } = calculateTransits(date, lat, lon);
+        const birthDetails = { date: new Date(year, month - 1, day, hour, minute), lat, lon };
+
+        const { planets: p, d1, d9, d60, predictions: preds, dasha: d, sadeSati: ss, gocharaScore: gs, remedies: rems } = calculateTransits(date, lat, lon, birthDetails);
         queueMicrotask(() => {
           setPlanets(p);
           setChartData(d1);
           setD9Data(d9);
           setD60Data(d60);
           setPredictions(preds);
+          setDasha(d);
+          setSadeSati(ss);
+          setGocharaScore(gs);
+          setRemedies(rems);
         });
       } catch (e) {
         console.error("Failed to calculate transits", e);
@@ -188,7 +203,7 @@ export default function Home() {
     }, 200);
 
     return () => clearTimeout(timer);
-  }, [dateStr, timeStr, lat, lon]);
+  }, [dateStr, timeStr, lat, lon, scrubDays]);
 
   return (
     <main className="min-h-screen flex flex-col pb-20">
@@ -320,24 +335,39 @@ export default function Home() {
               <div className="relative z-10 flex flex-col items-center">
                 <div className="text-[#94A3B8] font-medium mb-4 uppercase tracking-widest text-sm">Gochara Score</div>
 
-                {/* Circular Progress Bar Mock */}
                 <div className="relative w-48 h-48 flex items-center justify-center">
                   <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
                     <circle cx="50" cy="50" r="45" fill="none" stroke="#1E293B" strokeWidth="8" />
-                    <circle cx="50" cy="50" r="45" fill="none" stroke="#F59E0B" strokeWidth="8" strokeDasharray="283" strokeDashoffset="56" className="transition-all duration-1000 ease-out" strokeLinecap="round" />
+                    <circle
+                      cx="50" cy="50" r="45" fill="none"
+                      stroke="#F59E0B" strokeWidth="8"
+                      strokeDasharray="283"
+                      strokeDashoffset={283 - (283 * gocharaScore) / 100}
+                      className="transition-all duration-1000 ease-out"
+                      strokeLinecap="round"
+                    />
                   </svg>
                   <div className="absolute flex flex-col items-center justify-center">
-                    <span className="text-5xl font-serif font-bold text-[#F1F5F9]">80<span className="text-2xl text-[#94A3B8]">%</span></span>
-                    <span className="text-xs text-[#10B981] mt-1 font-medium flex items-center gap-1">
-                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 10l7-7m0 0l7 7m-7-7v18"></path></svg>
-                      Rising
+                    <span className="text-5xl font-serif font-bold text-[#F1F5F9]">{gocharaScore}<span className="text-2xl text-[#94A3B8]">%</span></span>
+                    <span className={`text-xs mt-1 font-medium flex items-center gap-1 ${gocharaScore >= 50 ? 'text-[#10B981]' : 'text-[#EF4444]'}`}>
+                      {gocharaScore >= 50 ? (
+                        <><svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 10l7-7m0 0l7 7m-7-7v18"></path></svg> Positive</>
+                      ) : (
+                        <><svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path></svg> Challenging</>
+                      )}
                     </span>
                   </div>
                 </div>
 
                 <div className="mt-6 flex flex-col items-center text-center">
-                  <div className="text-lg text-[#F1F5F9] font-medium">Active Dasha: <span className="text-[#F59E0B] font-serif">Jupiter / Rahu</span></div>
-                  <p className="text-sm text-[#94A3B8] mt-2 max-w-xs">Transits are currently supportive of career expansion and spiritual learning.</p>
+                  {dasha && (
+                    <div className="text-lg text-[#F1F5F9] font-medium">Active Dasha: <span className="text-[#F59E0B] font-serif">{dasha.mahadasha.lord} / {dasha.antardasha.lord}</span></div>
+                  )}
+                  <p className="text-sm text-[#94A3B8] mt-2 max-w-xs">
+                    {gocharaScore >= 70 ? "Transits are highly supportive of your goals." :
+                     gocharaScore >= 50 ? "Transits are generally stable and balanced." :
+                     "Transits may require extra effort and patience."}
+                  </p>
                 </div>
               </div>
             </section>
@@ -381,37 +411,100 @@ export default function Home() {
             </section>
           </div>
 
-          {/* Sade Sati Dashboard Placeholder */}
-          <section className="bg-gradient-to-r from-[#1E293B] to-[#111827] p-6 rounded-2xl border border-[#334155] shadow-lg flex flex-col md:flex-row items-center justify-between gap-6">
-            <div className="flex-1">
-              <div className="flex items-center gap-3 mb-2">
-                <h3 className="text-xl font-serif text-[#F1F5F9]">Sade Sati Tracker</h3>
-                <span className="px-2 py-0.5 bg-red-500/20 text-red-400 text-xs font-bold rounded-full border border-red-500/30 animate-pulse">ACTIVE</span>
-              </div>
-              <p className="text-[#94A3B8] text-sm mb-4">You are currently in the <strong>Peak Phase</strong> (Core Phase) of Sade Sati.</p>
+          {/* Sade Sati Dashboard */}
+          {sadeSati?.isActive ? (
+            <section className="bg-gradient-to-r from-[#1E293B] to-[#111827] p-6 rounded-2xl border border-[#334155] shadow-lg flex flex-col md:flex-row items-center justify-between gap-6">
+              <div className="flex-1">
+                <div className="flex items-center gap-3 mb-2">
+                  <h3 className="text-xl font-serif text-[#F1F5F9]">Sade Sati Tracker</h3>
+                  <span className="px-2 py-0.5 bg-red-500/20 text-red-400 text-xs font-bold rounded-full border border-red-500/30 animate-pulse">ACTIVE</span>
+                </div>
+                <p className="text-[#94A3B8] text-sm mb-4">You are currently in the <strong>{sadeSati.phase} Phase</strong> of Sade Sati.</p>
 
-              <div className="w-full bg-[#0B0F19] rounded-full h-2.5 mb-2 border border-[#334155]">
-                <div className="bg-gradient-to-r from-blue-600 to-indigo-500 h-2.5 rounded-full" style={{ width: '55%' }}></div>
+                <div className="w-full bg-[#0B0F19] rounded-full h-2.5 mb-2 border border-[#334155]">
+                  <div className="bg-gradient-to-r from-blue-600 to-indigo-500 h-2.5 rounded-full" style={{ width: sadeSati.phase === 'Rising' ? '33%' : sadeSati.phase === 'Peak' ? '66%' : '100%' }}></div>
+                </div>
+                <div className="flex justify-between text-xs text-[#64748B] font-medium">
+                  <span className={sadeSati.phase === 'Rising' ? 'text-[#F1F5F9]' : ''}>Rising</span>
+                  <span className={sadeSati.phase === 'Peak' ? 'text-[#F1F5F9]' : ''}>Peak</span>
+                  <span className={sadeSati.phase === 'Setting' ? 'text-[#F1F5F9]' : ''}>Setting</span>
+                </div>
               </div>
-              <div className="flex justify-between text-xs text-[#64748B] font-medium">
-                <span>Rising (Started 2020)</span>
-                <span className="text-[#F1F5F9]">Peak (Ends 2025)</span>
-                <span>Setting (Ends 2027)</span>
+              <div className="w-full md:w-auto bg-[#0B0F19] p-4 rounded-xl border border-[#334155] flex flex-col items-center justify-center">
+                <span className="text-xs text-[#94A3B8] mb-1 uppercase tracking-wider">Primary Upaya</span>
+                <span className="text-sm font-medium text-[#F59E0B] text-center">Hanuman Chalisa<br/>(Daily at Sunset)</span>
               </div>
-            </div>
-            <div className="w-full md:w-auto bg-[#0B0F19] p-4 rounded-xl border border-[#334155] flex flex-col items-center justify-center">
-              <span className="text-xs text-[#94A3B8] mb-1 uppercase tracking-wider">Primary Upaya</span>
-              <span className="text-sm font-medium text-[#F59E0B] text-center">Hanuman Chalisa<br/>(Daily at Sunset)</span>
-            </div>
-          </section>
+            </section>
+          ) : (
+            <section className="bg-[#111827] p-6 rounded-2xl border border-[#334155] shadow-lg text-center">
+               <h3 className="text-xl font-serif text-[#F1F5F9] mb-2">Sade Sati Status</h3>
+               <p className="text-[#10B981] font-medium">You are not currently under the influence of Sade Sati.</p>
+            </section>
+          )}
 
           </div>
         )}
 
-        {/* Tab 2 Placeholder */}
+        {/* Tab 2: Timeline */}
         {activeTab === "timeline" && (
-          <div className="flex items-center justify-center h-64 text-[#94A3B8]">
-            Interactive Timeline (Level 2) - Coming Soon
+          <div className="space-y-8">
+            <header className="flex justify-between items-center mb-8">
+              <h1 className="text-3xl font-serif text-[#F59E0B]">Interactive Timeline</h1>
+            </header>
+
+            <section className="bg-[#111827] p-8 rounded-2xl border border-[#334155] shadow-lg space-y-6">
+              <div className="flex justify-between items-center">
+                <h3 className="text-xl font-serif text-[#F1F5F9]">Transit Scrubber</h3>
+                <span className="text-[#F59E0B] font-mono">{scrubDays > 0 ? `+${scrubDays}` : scrubDays} days</span>
+              </div>
+
+              <input
+                type="range"
+                min="-30"
+                max="30"
+                value={scrubDays}
+                onChange={(e) => setScrubDays(parseInt(e.target.value))}
+                className="w-full h-2 bg-[#1E293B] rounded-lg appearance-none cursor-pointer accent-[#F59E0B]"
+              />
+
+              <div className="flex justify-between text-xs text-[#94A3B8] font-medium uppercase tracking-wider">
+                <span>-30 Days</span>
+                <span>Today</span>
+                <span>+30 Days</span>
+              </div>
+
+              <div className="pt-4 border-t border-[#334155] flex flex-col md:flex-row gap-6">
+                <div className="flex-1 bg-[#1E293B] p-4 rounded-xl border border-[#334155]">
+                  <div className="text-sm text-[#94A3B8] mb-1">Gochara Score at Selected Time</div>
+                  <div className="text-3xl font-serif text-[#F1F5F9]">{gocharaScore}%</div>
+                </div>
+                <div className="flex-1 bg-[#1E293B] p-4 rounded-xl border border-[#334155]">
+                  <div className="text-sm text-[#94A3B8] mb-1">Status</div>
+                  <div className={`text-xl font-medium ${gocharaScore >= 50 ? 'text-[#10B981]' : 'text-[#EF4444]'}`}>
+                    {gocharaScore >= 70 ? 'Highly Auspicious' : gocharaScore >= 50 ? 'Favorable' : 'Caution Advised'}
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <div className="grid md:grid-cols-2 gap-8 items-start">
+              <section className="bg-[#111827] p-6 rounded-2xl shadow-lg border border-[#334155]">
+                <h2 className="text-xl font-serif mb-6 text-[#F1F5F9] text-center">Transit Chart (D1)</h2>
+                {chartData ? <KundliChart data={chartData} /> : <div className="animate-pulse h-[300px] bg-[#1E293B] rounded-lg border border-[#334155]"></div>}
+              </section>
+
+              <section className="bg-[#111827] p-6 rounded-2xl shadow-lg border border-[#334155] h-full">
+                <h2 className="text-xl font-serif mb-6 text-[#F1F5F9]">Predictions for this period</h2>
+                <ul className="space-y-4">
+                  {predictions.placements.slice(0, 5).map((pred, i) => (
+                    <li key={i} className="flex gap-3 text-[#94A3B8] text-sm leading-relaxed">
+                      <span className="text-[#F59E0B] flex-shrink-0">✦</span>
+                      <p>{pred}</p>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            </div>
           </div>
         )}
 
@@ -520,10 +613,89 @@ export default function Home() {
           </div>
         )}
 
-        {/* Tab 4 Placeholder */}
+        {/* Tab 4: Remedies & Dasha */}
         {activeTab === "remedies" && (
-          <div className="flex items-center justify-center h-64 text-[#94A3B8]">
-            Dasha Matrix & Remedies - Coming Soon
+          <div className="space-y-8">
+            <header className="flex justify-between items-center mb-8">
+              <h1 className="text-3xl font-serif text-[#F59E0B]">Upayas & Dasha</h1>
+            </header>
+
+            {/* Dasha Timeline */}
+            {dasha && (
+              <section className="bg-[#111827] p-6 rounded-2xl border border-[#334155] shadow-lg">
+                <h3 className="text-xl font-serif text-[#F1F5F9] mb-6">Active Vimshottari Dasha</h3>
+                <div className="space-y-6">
+                  <div className="relative pt-1">
+                    <div className="flex mb-2 items-center justify-between">
+                      <div>
+                        <span className="text-xs font-semibold inline-block py-1 px-2 uppercase rounded-full text-[#F59E0B] bg-[#F59E0B]/10">
+                          Mahadasha: {dasha.mahadasha.lord}
+                        </span>
+                      </div>
+                      <div className="text-right">
+                        <span className="text-xs font-semibold inline-block text-[#94A3B8]">
+                          Ends {new Date(dasha.mahadasha.end).toLocaleDateString()}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="overflow-hidden h-2 mb-4 text-xs flex rounded bg-[#1E293B] border border-[#334155]">
+                      <div style={{ width: "60%" }} className="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-[#F59E0B]"></div>
+                    </div>
+                  </div>
+
+                  <div className="relative pt-1">
+                    <div className="flex mb-2 items-center justify-between">
+                      <div>
+                        <span className="text-xs font-semibold inline-block py-1 px-2 uppercase rounded-full text-blue-400 bg-blue-400/10">
+                          Antardasha: {dasha.antardasha.lord}
+                        </span>
+                      </div>
+                      <div className="text-right">
+                        <span className="text-xs font-semibold inline-block text-[#94A3B8]">
+                          Ends {new Date(dasha.antardasha.end).toLocaleDateString()}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="overflow-hidden h-2 mb-4 text-xs flex rounded bg-[#1E293B] border border-[#334155]">
+                      <div style={{ width: "40%" }} className="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-blue-500"></div>
+                    </div>
+                  </div>
+                </div>
+              </section>
+            )}
+
+            {/* Remedies Grid */}
+            <div className="grid md:grid-cols-2 gap-6">
+              {remedies.map((remedy, i) => (
+                <section key={i} className="bg-[#111827] p-6 rounded-2xl border border-[#334155] shadow-lg group hover:border-[#F59E0B]/50 transition-all">
+                  <div className="flex justify-between items-start mb-4">
+                    <h3 className="text-lg font-serif text-[#F1F5F9]">{remedy.planet} Upaya</h3>
+                    <span className="text-xs text-[#94A3B8] bg-[#1E293B] px-2 py-1 rounded border border-[#334155]">{remedy.condition}</span>
+                  </div>
+
+                  <div className="space-y-4">
+                    <div>
+                      <div className="text-xs uppercase tracking-widest text-[#F59E0B] font-bold mb-1">Mantra</div>
+                      <p className="text-sm text-[#F1F5F9] italic font-serif">&quot;{remedy.mantra}&quot;</p>
+                    </div>
+                    <div>
+                      <div className="text-xs uppercase tracking-widest text-blue-400 font-bold mb-1">Charity (Daan)</div>
+                      <p className="text-sm text-[#94A3B8]">{remedy.charity}</p>
+                    </div>
+                    <div>
+                      <div className="text-xs uppercase tracking-widest text-emerald-400 font-bold mb-1">Lifestyle</div>
+                      <p className="text-sm text-[#94A3B8]">{remedy.lifestyle}</p>
+                    </div>
+                  </div>
+                </section>
+              ))}
+
+              {remedies.length === 0 && (
+                <div className="col-span-full py-12 text-center text-[#94A3B8]">
+                  No specific remedies found for current transits. Maintaining a balanced lifestyle is recommended.
+                </div>
+              )}
+            </div>
           </div>
         )}
       </div>
