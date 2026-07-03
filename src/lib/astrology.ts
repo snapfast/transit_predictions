@@ -1,8 +1,7 @@
 import * as AstModule from 'astronomy-engine';
 
 // Workaround for ESM/CJS interop
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const Ast = (AstModule as any).default || AstModule;
+const Ast = (AstModule as unknown as { default: typeof AstModule }).default || AstModule;
 
 export interface PlanetData {
     name: string;
@@ -13,11 +12,20 @@ export interface PlanetData {
     house: number;
     nakshatra: string;
     isRetrograde: boolean;
+    vedha?: {
+        isObstructed: boolean;
+        obstructingPlanet?: string;
+    };
 }
 
 export interface DivisionalChartData {
     houses: { [key: number]: Array<{ symbol: string, isRetrograde: boolean }> };
     houseRasis: { [key: number]: number };
+}
+
+export interface AshtakavargaData {
+    bav: { [key: string]: number[] }; // Planet name -> array of 12 scores
+    sav: number[]; // Array of 12 scores
 }
 
 export function getD9Rasi(longitude: number): number {
@@ -33,6 +41,7 @@ export function getD60Rasi(longitude: number): number {
 export interface Predictions {
     placements: string[];
     aspects: string[];
+    yogas: string[];
 }
 
 export interface DashaLevel {
@@ -44,6 +53,7 @@ export interface DashaLevel {
 export interface DashaInfo {
     mahadasha: DashaLevel;
     antardasha: DashaLevel;
+    pratyantardasha: DashaLevel;
 }
 
 export interface SadeSatiInfo {
@@ -77,14 +87,19 @@ export function getRemedies(planets: PlanetData[], dasha?: DashaInfo, sadeSati?:
         remedies.push(getPlanetRemedy(dashaLord, "Active Mahadasha Lord"));
     }
 
-    // Check for major afflictions (simplified)
     planets.forEach(p => {
+        if (p.vedha?.isObstructed) {
+            remedies.push(getPlanetRemedy(p.name, `Obstructed ${p.name} Transit`));
+        }
         if (p.isRetrograde && ["Mars", "Saturn", "Rahu", "Ketu"].includes(p.name)) {
             remedies.push(getPlanetRemedy(p.name, `Retrograde ${p.name}`));
         }
+        if (["Mars", "Saturn", "Rahu", "Ketu"].includes(p.name) && [1, 2, 4, 5, 7, 8, 9, 12].includes(p.house)) {
+            remedies.push(getPlanetRemedy(p.name, `${p.name} in House ${p.house}`));
+        }
     });
 
-    return remedies;
+    return remedies.filter((v, i, a) => a.findIndex(t => t.planet === v.planet && t.condition === v.condition) === i).slice(0, 6);
 }
 
 function getPlanetRemedy(planet: string, condition: string): Remedy {
@@ -104,39 +119,48 @@ function getPlanetRemedy(planet: string, condition: string): Remedy {
     return { planet, condition, ...remedy };
 }
 
-export function calculateGocharaScore(planets: PlanetData[], dasha?: DashaInfo): number {
-    let score = 50; // Neutral start
+export function calculateGocharaScore(planets: PlanetData[], dasha?: DashaInfo, ashtakavarga?: AshtakavargaData): number {
+    let score = 50;
 
     planets.forEach(p => {
-        // Benefics in good houses from Moon
-        const isBenefic = ["Jupiter", "Venus", "Mercury", "Moon"].includes(p.name);
-        const houseFromMoon = p.house; // This is actually from Lagna in current calculateTransits...
-        // Wait, calculateTransits currently sets house relative to Lagna.
-        // We need house relative to Moon for Gochara.
+        if (p.name === "Ascendant") return;
 
-        // Let's assume p.house passed here is from Moon for scoring purposes
-        // if we call it correctly or adjust logic.
+        let planetScore = 0;
+        const isBenefic = ["Jupiter", "Venus", "Mercury", "Moon"].includes(p.name);
+        const house = p.house;
 
         if (isBenefic) {
-            if ([1, 2, 4, 5, 7, 9, 10, 11].includes(houseFromMoon)) score += 5;
+            if ([1, 2, 4, 5, 7, 9, 10, 11].includes(house)) planetScore += 8;
+            else planetScore -= 4;
         } else {
-            if ([3, 6, 11].includes(houseFromMoon)) score += 7;
-            else score -= 3;
+            if ([3, 6, 11].includes(house)) planetScore += 10;
+            else planetScore -= 6;
         }
+
+        if (p.vedha?.isObstructed) {
+            planetScore = planetScore > 0 ? planetScore * 0.2 : planetScore;
+        }
+
+        if (ashtakavarga && ashtakavarga.bav[p.name]) {
+            const rasiIdx = RASIS.indexOf(p.rasi);
+            const bindus = ashtakavarga.bav[p.name][rasiIdx];
+            if (bindus >= 5) planetScore += 5;
+            else if (bindus <= 3) planetScore -= 5;
+        }
+
+        score += planetScore;
     });
 
     if (dasha) {
-        // Boost if dasha lord is in good position
         const dashaLord = planets.find(p => p.name === dasha.mahadasha.lord);
-        if (dashaLord && [1, 5, 9, 10, 11].includes(dashaLord.house)) score += 10;
+        if (dashaLord && [1, 5, 9, 10, 11].includes(dashaLord.house)) score += 15;
     }
 
     return Math.min(Math.max(score, 0), 100);
 }
 
 export function calculateVimshottariDasha(birthDate: Date, moonLongitude: number, targetDate: Date = new Date()): DashaInfo {
-    const totalCycle = 120;
-    const nakshatraLength = 360 / 27;
+    const totalCycle = 120, nakshatraLength = 360 / 27;
     const dashaLords = ["Ketu", "Venus", "Sun", "Moon", "Mars", "Rahu", "Jupiter", "Saturn", "Mercury"];
     const dashaPeriods = [7, 20, 6, 10, 7, 18, 16, 19, 17];
 
@@ -148,15 +172,11 @@ export function calculateVimshottariDasha(birthDate: Date, moonLongitude: number
     const firstDashaRemainingYears = firstDashaTotalYears * (1 - passedInNakshatra);
 
     let currentDate = new Date(birthDate);
-
-    // Add first (partial) dasha
     let dashaEnd = new Date(currentDate);
     dashaEnd.setFullYear(dashaEnd.getFullYear() + Math.floor(firstDashaRemainingYears));
     dashaEnd.setMonth(dashaEnd.getMonth() + Math.floor((firstDashaRemainingYears % 1) * 12));
 
     let currentLordIndex = lordIndex;
-
-    // Iterate through Mahadashas until we find the current one
     while (dashaEnd < targetDate) {
         currentDate = new Date(dashaEnd);
         currentLordIndex = (currentLordIndex + 1) % 9;
@@ -165,471 +185,230 @@ export function calculateVimshottariDasha(birthDate: Date, moonLongitude: number
         dashaEnd.setFullYear(dashaEnd.getFullYear() + years);
     }
 
-    const currentMahadasha = {
-        lord: dashaLords[currentLordIndex],
-        start: new Date(currentDate),
-        end: new Date(dashaEnd)
-    };
+    const currentMahadasha = { lord: dashaLords[currentLordIndex], start: new Date(currentDate), end: new Date(dashaEnd) };
 
-    // Calculate Antardasha
     const mdDurationMs = dashaEnd.getTime() - currentDate.getTime();
     let adStart = new Date(currentDate);
-
     for (let i = 0; i < 9; i++) {
-        const adLord = dashaLords[(currentLordIndex + i) % 9];
-        const adYears = dashaPeriods[(currentLordIndex + i) % 9];
-        const adDurationMs = (adYears / totalCycle) * mdDurationMs;
+        const adIdx = (currentLordIndex + i) % 9;
+        const adLord = dashaLords[adIdx];
+        const adDurationMs = (dashaPeriods[adIdx] / totalCycle) * mdDurationMs;
         const adEnd = new Date(adStart.getTime() + adDurationMs);
-
         if (adEnd > targetDate) {
-            return {
-                mahadasha: currentMahadasha,
-                antardasha: {
-                    lord: adLord,
-                    start: adStart,
-                    end: adEnd
+            const currentAD = { lord: adLord, start: adStart, end: adEnd };
+            const adDurationActual = adEnd.getTime() - adStart.getTime();
+            let pdStart = new Date(adStart);
+            for (let j = 0; j < 9; j++) {
+                const pdIdx = (adIdx + j) % 9;
+                const pdLord = dashaLords[pdIdx];
+                const pdDurationMs = (dashaPeriods[pdIdx] / totalCycle) * adDurationActual;
+                const pdEnd = new Date(pdStart.getTime() + pdDurationMs);
+                if (pdEnd > targetDate) {
+                    return { mahadasha: currentMahadasha, antardasha: currentAD, pratyantardasha: { lord: pdLord, start: pdStart, end: pdEnd } };
                 }
-            };
+                pdStart = pdEnd;
+            }
+            return { mahadasha: currentMahadasha, antardasha: currentAD, pratyantardasha: { lord: adLord, start: adStart, end: adEnd } };
         }
         adStart = adEnd;
     }
-
-    // Fallback
-    return {
-        mahadasha: currentMahadasha,
-        antardasha: { lord: dashaLords[currentLordIndex], start: currentDate, end: dashaEnd }
-    };
+    const fallback = { lord: dashaLords[currentLordIndex], start: currentDate, end: dashaEnd };
+    return { mahadasha: currentMahadasha, antardasha: fallback, pratyantardasha: fallback };
 }
 
 export function calculateSadeSati(natalMoonLongitude: number, transitSaturnLongitude: number): SadeSatiInfo {
     const natalMoonRasi = Math.floor(natalMoonLongitude / 30);
     const transitSaturnRasi = Math.floor(transitSaturnLongitude / 30);
-
     const diff = (transitSaturnRasi - natalMoonRasi + 12) % 12;
-
     if (diff === 11) return { isActive: true, phase: 'Rising' };
     if (diff === 0) return { isActive: true, phase: 'Peak' };
     if (diff === 1) return { isActive: true, phase: 'Setting' };
-
     return { isActive: false, phase: 'None' };
 }
 
 export function generatePredictions(planets: PlanetData[]): Predictions {
     const placements: string[] = [];
     const aspects: string[] = [];
+    const yogas: string[] = [];
 
-    const getPlanet = (name: string) => planets.find(p => p.name === name);
-    const moon = getPlanet("Moon");
-
-    if (!moon) {
-        return { placements, aspects };
-    }
+    const moon = planets.find(p => p.name === "Moon");
+    if (!moon) return { placements, aspects, yogas };
 
     const moonRasiIdx = RASIS.indexOf(moon.rasi);
+    const getHouseFromMoon = (rasi: string) => (RASIS.indexOf(rasi) - moonRasiIdx + 12) % 12 + 1;
 
-    const getHouseFromMoon = (planetRasi: string) => {
-        const planetRasiIdx = RASIS.indexOf(planetRasi);
-        return ((planetRasiIdx - moonRasiIdx + 12) % 12) + 1;
-    };
+    planets.forEach(p => {
+        if (["Ascendant", "Gulika", "Mandi"].includes(p.name)) return;
+        const h = getHouseFromMoon(p.rasi);
+        const status = p.vedha?.isObstructed ? ` (Obstructed by ${p.vedha.obstructingPlanet})` : "";
+        placements.push(`${p.name} in House ${h} from Moon: ${getHouseTheme(h)}${status}`);
 
-    planets.forEach(planet => {
-        if (planet.name === "Ascendant" || planet.name === "Gulika" || planet.name === "Mandi") return;
-
-        const houseFromMoon = getHouseFromMoon(planet.rasi);
-
-        if (planet.name === "Moon") {
-            placements.push(`The Moon is in ${planet.rasi} (House ${houseFromMoon} from itself). This highlights themes of ${getHouseTheme(houseFromMoon)} in your emotional landscape today.`);
-        } else if (planet.name === "Sun") {
-            placements.push(`The Sun is in ${planet.rasi} (House ${houseFromMoon} from Moon). Your core energy and focus will be drawn towards matters of ${getHouseTheme(houseFromMoon)}.`);
-        } else if (planet.name === "Jupiter") {
-            placements.push(`Jupiter's expansive presence in the ${houseFromMoon}th house from the Moon brings potential for growth and optimism regarding ${getHouseTheme(houseFromMoon)}.`);
-        } else if (planet.name === "Saturn") {
-            placements.push(`Saturn's transit in the ${houseFromMoon}th house from the Moon reminds you to maintain discipline and responsibility in the area of ${getHouseTheme(houseFromMoon)}.`);
-        } else if (planet.name === "Mars") {
-             placements.push(`Mars in the ${houseFromMoon}th house from the Moon brings energy and drive to matters of ${getHouseTheme(houseFromMoon)}.`);
-        } else if (planet.name === "Mercury") {
-             placements.push(`Mercury in the ${houseFromMoon}th house from the Moon affects your communication and intellect in the realm of ${getHouseTheme(houseFromMoon)}.`);
-        } else if (planet.name === "Venus") {
-             placements.push(`Venus in the ${houseFromMoon}th house from the Moon influences harmony, relationships, and comforts concerning ${getHouseTheme(houseFromMoon)}.`);
-        } else if (planet.name === "Rahu") {
-             placements.push(`Rahu in the ${houseFromMoon}th house from the Moon creates worldly desires and unconventional approaches towards ${getHouseTheme(houseFromMoon)}.`);
-        } else if (planet.name === "Ketu") {
-             placements.push(`Ketu in the ${houseFromMoon}th house from the Moon brings detachment and spiritual introspection regarding ${getHouseTheme(houseFromMoon)}.`);
-        } else if (planet.name === "Uranus" || planet.name === "Neptune" || planet.name === "Pluto") {
-             placements.push(`${planet.name} in the ${houseFromMoon}th house from the Moon brings its outer planetary influence to matters of ${getHouseTheme(houseFromMoon)}.`);
-        }
-
-        // Calculate aspects
-        if (planet.name === "Sun" || planet.name === "Moon" || planet.name === "Mercury" || planet.name === "Venus") {
-            const aspectedHouse = (houseFromMoon + 6) % 12 || 12;
-            aspects.push(`${planet.name} aspects the ${aspectedHouse}th house from the Moon, influencing ${getHouseTheme(aspectedHouse)}.`);
-        } else if (planet.name === "Mars") {
-            const aspect4 = (houseFromMoon + 3) % 12 || 12;
-            const aspect7 = (houseFromMoon + 6) % 12 || 12;
-            const aspect8 = (houseFromMoon + 7) % 12 || 12;
-            aspects.push(`Mars aspects the ${aspect4}th, ${aspect7}th, and ${aspect8}th houses from the Moon, driving energy towards ${getHouseTheme(aspect4)}, ${getHouseTheme(aspect7)}, and ${getHouseTheme(aspect8)}.`);
-        } else if (planet.name === "Jupiter" || planet.name === "Rahu" || planet.name === "Ketu") {
-            const aspect5 = (houseFromMoon + 4) % 12 || 12;
-            const aspect7 = (houseFromMoon + 6) % 12 || 12;
-            const aspect9 = (houseFromMoon + 8) % 12 || 12;
-            aspects.push(`${planet.name} aspects the ${aspect5}th, ${aspect7}th, and ${aspect9}th houses from the Moon, expanding ${getHouseTheme(aspect5)}, ${getHouseTheme(aspect7)}, and ${getHouseTheme(aspect9)}.`);
-        } else if (planet.name === "Saturn") {
-            const aspect3 = (houseFromMoon + 2) % 12 || 12;
-            const aspect7 = (houseFromMoon + 6) % 12 || 12;
-            const aspect10 = (houseFromMoon + 9) % 12 || 12;
-            aspects.push(`Saturn aspects the ${aspect3}th, ${aspect7}th, and ${aspect10}th houses from the Moon, bringing structure and discipline to ${getHouseTheme(aspect3)}, ${getHouseTheme(aspect7)}, and ${getHouseTheme(aspect10)}.`);
+        if (["Sun", "Moon", "Mercury", "Venus"].includes(p.name)) {
+            aspects.push(`${p.name} aspects House ${(h + 6) % 12 || 12} from Moon.`);
+        } else if (p.name === "Mars") {
+            aspects.push(`Mars aspects Houses ${(h + 3) % 12 || 12}, ${(h + 6) % 12 || 12}, and ${(h + 7) % 12 || 12} from Moon.`);
+        } else if (["Jupiter", "Rahu", "Ketu"].includes(p.name)) {
+            aspects.push(`${p.name} aspects Houses ${(h + 4) % 12 || 12}, ${(h + 6) % 12 || 12}, and ${(h + 8) % 12 || 12} from Moon.`);
+        } else if (p.name === "Saturn") {
+            aspects.push(`Saturn aspects Houses ${(h + 2) % 12 || 12}, ${(h + 6) % 12 || 12}, and ${(h + 9) % 12 || 12} from Moon.`);
         }
     });
 
-    return { placements, aspects };
+    const getP = (name: string) => planets.find(p => p.name === name);
+    const jup = getP("Jupiter"), merc = getP("Mercury"), sun = getP("Sun"), ven = getP("Venus"), mars = getP("Mars");
+
+    if (jup && moon && (RASIS.indexOf(jup.rasi) - RASIS.indexOf(moon.rasi) + 12) % 3 === 0) {
+        yogas.push("Gaja Kesari Yoga: Jupiter is in a quadrant from Moon. Brings wealth, intelligence, and lasting fame.");
+    }
+    if (sun && merc && sun.rasi === merc.rasi) {
+        yogas.push("Budha Aditya Yoga: Sun and Mercury conjunction. Enhances success and intellect.");
+    }
+    if (ven && moon && (RASIS.indexOf(ven.rasi) - RASIS.indexOf(moon.rasi) + 12) % 12 === 0) {
+        yogas.push("Malavya Yoga tendencies: Strong Venus influence on Moon. Artistic talents and comforts.");
+    }
+    if (mars && jup && mars.rasi === jup.rasi) {
+        yogas.push("Guru Mangala Yoga: Mars and Jupiter conjunction. Drive for leadership.");
+    }
+
+    return { placements, aspects, yogas };
 }
 
 function getHouseTheme(house: number): string {
     const themes: { [key: number]: string } = {
-        1: "self, vitality, and new beginnings",
-        2: "finances, family, and speech",
-        3: "courage, siblings, and short journeys",
-        4: "home, mother, and inner peace",
-        5: "creativity, intellect, and children",
-        6: "health, daily routines, and overcoming obstacles",
-        7: "partnerships, relationships, and business",
-        8: "transformation, sudden changes, and shared resources",
-        9: "luck, higher wisdom, and long travels",
-        10: "career, public image, and achievements",
-        11: "gains, friendships, and long-term goals",
-        12: "spirituality, letting go, and hidden matters"
+        1: "Self and vitality.", 2: "Wealth and family.", 3: "Courage and communication.",
+        4: "Home and peace.", 5: "Creativity and children.", 6: "Health and routines.",
+        7: "Relationships and public.", 8: "Transformation and resources.", 9: "Wisdom and travel.",
+        10: "Career and reputation.", 11: "Gains and social life.", 12: "Spirituality and expenses."
     };
-    return themes[house] || "general life events";
+    return themes[house] || "General influences.";
 }
 
-const NAKSHATRAS = [
-    "Ashwini", "Bharani", "Krittika", "Rohini", "Mrigashirsha", "Ardra", "Punarvasu", "Pushya", "Ashlesha",
-    "Magha", "Purva Phalguni", "Uttara Phalguni", "Hasta", "Chitra", "Swati", "Vishakha", "Anuradha", "Jyeshtha",
-    "Mula", "Purva Ashadha", "Uttara Ashadha", "Shravana", "Dhanishta", "Shatabhisha", "Purva Bhadrapada", "Uttara Bhadrapada", "Revati"
-];
-
-const RASIS = [
-    "Aries", "Taurus", "Gemini", "Cancer", "Leo", "Virgo", "Libra", "Scorpio", "Sagittarius", "Capricorn", "Aquarius", "Pisces"
-];
-
+const NAKSHATRAS = ["Ashwini", "Bharani", "Krittika", "Rohini", "Mrigashirsha", "Ardra", "Punarvasu", "Pushya", "Ashlesha", "Magha", "Purva Phalguni", "Uttara Phalguni", "Hasta", "Chitra", "Swati", "Vishakha", "Anuradha", "Jyeshtha", "Mula", "Purva Ashadha", "Uttara Ashadha", "Shravana", "Dhanishta", "Shatabhisha", "Purva Bhadrapada", "Uttara Bhadrapada", "Revati"];
+const RASIS = ["Aries", "Taurus", "Gemini", "Cancer", "Leo", "Virgo", "Libra", "Scorpio", "Sagittarius", "Capricorn", "Aquarius", "Pisces"];
 const PLANET_MAP = [
-    { name: "Sun", body: Ast.Body.Sun, symbol: "Su" },
-    { name: "Moon", body: Ast.Body.Moon, symbol: "Mo" },
-    { name: "Mars", body: Ast.Body.Mars, symbol: "Ma" },
-    { name: "Mercury", body: Ast.Body.Mercury, symbol: "Me" },
-    { name: "Jupiter", body: Ast.Body.Jupiter, symbol: "Ju" },
-    { name: "Venus", body: Ast.Body.Venus, symbol: "Ve" },
-    { name: "Saturn", body: Ast.Body.Saturn, symbol: "Sa" },
-    { name: "Uranus", body: Ast.Body.Uranus, symbol: "Ur" },
-    { name: "Neptune", body: Ast.Body.Neptune, symbol: "Ne" },
-    { name: "Pluto", body: Ast.Body.Pluto, symbol: "Pl" },
+    { name: "Sun", body: Ast.Body.Sun, symbol: "Su" }, { name: "Moon", body: Ast.Body.Moon, symbol: "Mo" },
+    { name: "Mars", body: Ast.Body.Mars, symbol: "Ma" }, { name: "Mercury", body: Ast.Body.Mercury, symbol: "Me" },
+    { name: "Jupiter", body: Ast.Body.Jupiter, symbol: "Ju" }, { name: "Venus", body: Ast.Body.Venus, symbol: "Ve" },
+    { name: "Saturn", body: Ast.Body.Saturn, symbol: "Sa" }, { name: "Uranus", body: Ast.Body.Uranus, symbol: "Ur" },
+    { name: "Neptune", body: Ast.Body.Neptune, symbol: "Ne" }, { name: "Pluto", body: Ast.Body.Pluto, symbol: "Pl" }
 ];
 
-export function getLahiriAyanamsa(time: AstModule.AstroTime): number {
+export type AyanamsaType = 'Lahiri' | 'Raman' | 'Fagan-Bradley';
+export function getAyanamsa(time: AstModule.AstroTime, type: AyanamsaType = 'Lahiri'): number {
     const T = time.tt / 36525.0;
-    return 23.85 + 1.39638 * T + 0.000308 * T * T;
+    const lahiri = 23.85 + 1.39638 * T + 0.000308 * T * T;
+    if (type === 'Raman') return lahiri - 1.45;
+    if (type === 'Fagan-Bradley') return lahiri + 0.88;
+    return lahiri;
 }
 
 export function getMeanRahu(time: AstModule.AstroTime): number {
-    // Julian century from J2000.0 TT
     const T = time.tt / 36525.0;
-
-    // Mean longitude of the Moon's ascending node (Rahu)
-    // Formula from Jean Meeus, Astronomical Algorithms
-    // Normalized to 0-360 degrees
-    let nodeLong = 125.04452 - 1934.136261 * T + 0.0020708 * T * T + T * T * T / 450000;
-
-    // Normalize to 0..360
-    nodeLong = nodeLong % 360.0;
-    if (nodeLong < 0) nodeLong += 360.0;
-
-    return nodeLong;
+    let n = 125.04452 - 1934.136261 * T + 0.0020708 * T * T;
+    n %= 360; if (n < 0) n += 360;
+    return n;
 }
 
-function formatDegree(deg: number): string {
-    const d = Math.floor(deg);
-    const m = Math.floor((deg - d) * 60);
-    return `${d}° ${m}'`;
-}
+const formatDegree = (deg: number) => `${Math.floor(deg)}° ${Math.floor((deg % 1) * 60)}'`;
 
-export function calculateTransits(date: Date, lat: number = 28.6139, lon: number = 77.2090, birthDetails?: { date: Date, lat: number, lon: number }): {
-    planets: PlanetData[],
-    d1: DivisionalChartData,
-    d9: DivisionalChartData,
-    d60: DivisionalChartData,
-    predictions: Predictions,
-    dasha?: DashaInfo,
-    sadeSati?: SadeSatiInfo,
-    gocharaScore: number,
-    remedies: Remedy[]
+export function calculateTransits(date: Date, lat: number = 28.6139, lon: number = 77.2090, birthDetails?: { date: Date, lat: number, lon: number }, ayanamsaType: AyanamsaType = 'Lahiri', refPlanet: string = "Ascendant"): {
+    planets: PlanetData[], d1: DivisionalChartData, d9: DivisionalChartData, d60: DivisionalChartData,
+    predictions: Predictions, dasha?: DashaInfo, sadeSati?: SadeSatiInfo, gocharaScore: number, remedies: Remedy[], ashtakavarga?: AshtakavargaData
 } {
-    const time = Ast.MakeTime(date);
-    const ayanamsa = getLahiriAyanamsa(time);
-
-    // Calculate Ascendant (Lagna)
-    const siderealTime = Ast.SiderealTime(time);
-    const RAMC = (siderealTime * 15 + lon) % 360;
-    const rad = Math.PI / 180;
-    const phi = lat * rad;
-    const rot = Ast.Rotation_ECL_EQD(time);
-    const eps = Math.acos(rot.rot[2][2]);
-    const alpha = RAMC * rad;
-    const lagnaTropical = (Math.atan2(Math.cos(alpha), -(Math.sin(alpha) * Math.cos(eps) + Math.tan(phi) * Math.sin(eps))) / rad + 360) % 360;
-    const lagnaSidereal = (lagnaTropical - ayanamsa + 360) % 360;
-    const lagnaRasiIdx = Math.floor(lagnaSidereal / 30);
-
-    const planets: PlanetData[] = [];
-
-    // Ascendant
-    planets.push({
-        name: "Ascendant",
-        symbol: "As",
-        longitude: lagnaSidereal,
-        degree: formatDegree(lagnaSidereal % 30),
-        rasi: RASIS[lagnaRasiIdx],
-        house: 1,
-        nakshatra: NAKSHATRAS[Math.floor(lagnaSidereal / (360 / 27))],
-        isRetrograde: false
-    });
-
-    // Traditional and Modern Planets
-    const timeDelta = time.AddDays(0.1); // +0.1 days
+    const time = Ast.MakeTime(date), ayanamsa = getAyanamsa(time, ayanamsaType);
+    const calcLagna = (t: AstModule.AstroTime) => {
+        const RAMC = (Ast.SiderealTime(t) * 15 + lon) % 360, eps = Math.acos(Ast.Rotation_ECL_EQD(t).rot[2][2]);
+        const alpha = RAMC * Math.PI / 180, phi = lat * Math.PI / 180;
+        const l_trop = (Math.atan2(Math.cos(alpha), -(Math.sin(alpha) * Math.cos(eps) + Math.tan(phi) * Math.sin(eps))) * 180 / Math.PI + 360) % 360;
+        return (l_trop - ayanamsa + 360) % 360;
+    };
+    const lagnaSid = calcLagna(time), lagnaIdx = Math.floor(lagnaSid / 30);
+    const raw: Array<{ name: string, symbol: string, longitude: number, degree: string, rasiIdx: number, isRetrograde: boolean }> = [], timeDelta = time.AddDays(0.1);
     PLANET_MAP.forEach(p => {
-        const pos = Ast.GeoVector(p.body, time, true);
-        const ecl = Ast.Ecliptic(pos);
-        const siderealLong = (ecl.elon - ayanamsa + 360) % 360;
-        const rasiIdx = Math.floor(siderealLong / 30);
-        const house = ((rasiIdx - lagnaRasiIdx + 12) % 12) + 1;
-        const nakIdx = Math.floor(siderealLong / (360 / 27));
-
-        // Check for retrograde motion
-        let isRetrograde = false;
-        if (p.name !== "Sun" && p.name !== "Moon") {
-            const posDelta = Ast.GeoVector(p.body, timeDelta, true);
-            const eclDelta = Ast.Ecliptic(posDelta);
-            let lonDiff = eclDelta.elon - ecl.elon;
-            if (lonDiff > 180) lonDiff -= 360;
-            if (lonDiff < -180) lonDiff += 360;
-            isRetrograde = lonDiff < 0;
-        }
-
-        planets.push({
-            name: p.name,
-            symbol: p.symbol,
-            longitude: siderealLong,
-            degree: formatDegree(siderealLong % 30),
-            rasi: RASIS[rasiIdx],
-            house: house,
-            nakshatra: NAKSHATRAS[nakIdx],
-            isRetrograde
-        });
+        const pos = Ast.GeoVector(p.body, time, true), ecl = Ast.Ecliptic(pos), sidereal = (ecl.elon - ayanamsa + 360) % 360;
+        const posDelta = Ast.GeoVector(p.body, timeDelta, true), eclDelta = Ast.Ecliptic(posDelta);
+        let diff = eclDelta.elon - ecl.elon; if (diff > 180) diff -= 360; if (diff < -180) diff += 360;
+        raw.push({ name: p.name, symbol: p.symbol, longitude: sidereal, degree: formatDegree(sidereal % 30), rasiIdx: Math.floor(sidereal / 30), isRetrograde: (p.name !== "Sun" && p.name !== "Moon" && diff < 0) });
     });
+    const rahuSid = (getMeanRahu(time) - ayanamsa + 360) % 360;
+    raw.push({ name: "Rahu", symbol: "Ra", longitude: rahuSid, degree: formatDegree(rahuSid % 30), rasiIdx: Math.floor(rahuSid / 30), isRetrograde: true });
+    raw.push({ name: "Ketu", symbol: "Ke", longitude: (rahuSid + 180) % 360, degree: formatDegree(((rahuSid + 180) % 360) % 30), rasiIdx: Math.floor(((rahuSid + 180) % 360) / 30), isRetrograde: true });
 
-    // Nodes (Rahu and Ketu)
-    const rahuTropical = getMeanRahu(time);
-    const rahuSidereal = (rahuTropical - ayanamsa + 360) % 360;
-    const ketuSidereal = (rahuSidereal + 180) % 360;
+    let refRasi = lagnaIdx;
+    if (refPlanet === "Moon") { const m = raw.find(p => p.name === "Moon"); if (m) refRasi = m.rasiIdx; }
+    else if (refPlanet !== "Ascendant") { const r = raw.find(p => p.name === refPlanet); if (r) refRasi = r.rasiIdx; }
 
-    const rahuRasiIdx = Math.floor(rahuSidereal / 30);
-    const ketuRasiIdx = Math.floor(ketuSidereal / 30);
+    const planets: PlanetData[] = [{ name: "Ascendant", symbol: "As", longitude: lagnaSid, degree: formatDegree(lagnaSid % 30), rasi: RASIS[lagnaIdx], house: (lagnaIdx - refRasi + 12) % 12 + 1, nakshatra: NAKSHATRAS[Math.floor(lagnaSid / (360 / 27))], isRetrograde: false }];
+    raw.forEach(p => planets.push({ ...p, rasi: RASIS[p.rasiIdx], house: (p.rasiIdx - refRasi + 12) % 12 + 1, nakshatra: NAKSHATRAS[Math.floor(p.longitude / (360 / 27))] }));
 
-    planets.push({
-        name: "Rahu",
-        symbol: "Ra",
-        longitude: rahuSidereal,
-        degree: formatDegree(rahuSidereal % 30),
-        rasi: RASIS[rahuRasiIdx],
-        house: ((rahuRasiIdx - lagnaRasiIdx + 12) % 12) + 1,
-        nakshatra: NAKSHATRAS[Math.floor(rahuSidereal / (360 / 27))],
-        isRetrograde: true
-    });
-
-    planets.push({
-        name: "Ketu",
-        symbol: "Ke",
-        longitude: ketuSidereal,
-        degree: formatDegree(ketuSidereal % 30),
-        rasi: RASIS[ketuRasiIdx],
-        house: ((ketuRasiIdx - lagnaRasiIdx + 12) % 12) + 1,
-        nakshatra: NAKSHATRAS[Math.floor(ketuSidereal / (360 / 27))],
-        isRetrograde: true
-    });
-
-    // Calculate Upgrahas (Gulika and Mandi)
-    const dayOfWeek = date.getDay(); // 0: Sunday, 1: Monday, ...
-    const observer = new Ast.Observer(lat, lon, 0);
-
-    // Find sunrise and sunset for the current day
-    // const sunriseTime = time;
-    // const sunsetTime = time;
-    let isDayTime = true;
-
-    // Approximate daytime calculation
-    const searchRise = Ast.SearchRiseSet(Ast.Body.Sun, observer, 1, time, -1);
-    const searchSet = Ast.SearchRiseSet(Ast.Body.Sun, observer, -1, time, 1);
-
-    let dayStart, dayEnd;
-
-    if (searchRise && searchSet) {
-       // if current time is between sunrise and sunset
-       if (time.tt > searchRise.tt && time.tt < searchSet.tt) {
-           dayStart = searchRise.tt;
-           dayEnd = searchSet.tt;
-           isDayTime = true;
-       } else {
-           isDayTime = false;
-           // If night time, we need sunset to next sunrise
-           const nextRise = Ast.SearchRiseSet(Ast.Body.Sun, observer, 1, time, 1);
-           if (searchSet.tt < time.tt && nextRise) {
-               dayStart = searchSet.tt;
-               dayEnd = nextRise.tt;
-           } else {
-               dayStart = searchSet.tt;
-               dayEnd = searchSet.tt + 0.5; // fallback 12 hours
-           }
-       }
-    } else {
-        dayStart = time.tt;
-        dayEnd = time.tt + 0.5;
-    }
-
-    const duration = dayEnd - dayStart;
-    const muhurtaLength = duration / 8;
-
-    // Gulika & Mandi parts (Day: Sun=7, Mon=6, Tue=5, Wed=4, Thu=3, Fri=2, Sat=1. Night: Sun=3, Mon=2, Tue=1, Wed=7, Thu=6, Fri=5, Sat=4)
-    const gulikaPartsDay = [7, 6, 5, 4, 3, 2, 1];
-    const gulikaPartsNight = [3, 2, 1, 7, 6, 5, 4];
-
-    const mandiPartsDay = [6, 5, 4, 3, 2, 1, 7];
-    const mandiPartsNight = [2, 1, 7, 6, 5, 4, 3];
-
-    const partOffsetGulika = isDayTime ? gulikaPartsDay[dayOfWeek] : gulikaPartsNight[dayOfWeek];
-    const partOffsetMandi = isDayTime ? mandiPartsDay[dayOfWeek] : mandiPartsNight[dayOfWeek];
-
-    const gulikaStartTt = dayStart + (partOffsetGulika - 1) * muhurtaLength;
-    const mandiStartTt = dayStart + (partOffsetMandi - 1) * muhurtaLength;
-
-    // To get the position of Gulika/Mandi, we calculate the Ascendant at their start time
-    const calcAscendantAtTime = (tt: number) => {
-        // Tt to UT difference is small, simplify for Ascendant calculation
-        const astroTime = new Ast.AstroTime(tt);
-        const st = Ast.SiderealTime(astroTime);
-        const r = (st * 15 + lon) % 360;
-        const a = r * rad;
-        const rotAt = Ast.Rotation_ECL_EQD(astroTime);
-        const epsAt = Math.acos(rotAt.rot[2][2]);
-        const lagnaTrop = (Math.atan2(Math.cos(a), -(Math.sin(a) * Math.cos(epsAt) + Math.tan(phi) * Math.sin(epsAt))) / rad + 360) % 360;
-        return (lagnaTrop - ayanamsa + 360) % 360;
-    };
-
-    const gulikaSidereal = calcAscendantAtTime(gulikaStartTt);
-    const mandiSidereal = calcAscendantAtTime(mandiStartTt);
-
-    planets.push({
-        name: "Gulika",
-        symbol: "Gu",
-        longitude: gulikaSidereal,
-        degree: formatDegree(gulikaSidereal % 30),
-        rasi: RASIS[Math.floor(gulikaSidereal / 30)],
-        house: ((Math.floor(gulikaSidereal / 30) - lagnaRasiIdx + 12) % 12) + 1,
-        nakshatra: NAKSHATRAS[Math.floor(gulikaSidereal / (360 / 27))],
-        isRetrograde: false
-    });
-
-    planets.push({
-        name: "Mandi",
-        symbol: "Md",
-        longitude: mandiSidereal,
-        degree: formatDegree(mandiSidereal % 30),
-        rasi: RASIS[Math.floor(mandiSidereal / 30)],
-        house: ((Math.floor(mandiSidereal / 30) - lagnaRasiIdx + 12) % 12) + 1,
-        nakshatra: NAKSHATRAS[Math.floor(mandiSidereal / (360 / 27))],
-        isRetrograde: false
-    });
-
-
-    // Generate D1, D9, and D60 Chart Data
-    const d1Houses: { [key: number]: Array<{ symbol: string, isRetrograde: boolean }> } = {};
-    const d1HouseRasis: { [key: number]: number } = {};
-    const d9Houses: { [key: number]: Array<{ symbol: string, isRetrograde: boolean }> } = {};
-    const d9HouseRasis: { [key: number]: number } = {};
-    const d60Houses: { [key: number]: Array<{ symbol: string, isRetrograde: boolean }> } = {};
-    const d60HouseRasis: { [key: number]: number } = {};
-
-    const lagnaD9RasiIdx = getD9Rasi(lagnaSidereal);
-    const lagnaD60RasiIdx = getD60Rasi(lagnaSidereal);
-
+    const d1: DivisionalChartData = { houses: {}, houseRasis: {} }, d9: DivisionalChartData = { houses: {}, houseRasis: {} }, d60: DivisionalChartData = { houses: {}, houseRasis: {} };
+    const mLong = raw.find(p => p.name === "Moon")?.longitude || lagnaSid;
+    const refD9 = getD9Rasi(refPlanet === "Moon" ? mLong : lagnaSid), refD60 = getD60Rasi(refPlanet === "Moon" ? mLong : lagnaSid);
     for (let i = 1; i <= 12; i++) {
-        d1Houses[i] = [];
-        d1HouseRasis[i] = ((lagnaRasiIdx + i - 1) % 12) + 1; // 1-based index (Aries = 1)
-
-        d9Houses[i] = [];
-        d9HouseRasis[i] = ((lagnaD9RasiIdx + i - 1) % 12) + 1;
-
-        d60Houses[i] = [];
-        d60HouseRasis[i] = ((lagnaD60RasiIdx + i - 1) % 12) + 1;
+        d1.houses[i] = []; d1.houseRasis[i] = (refRasi + i - 1) % 12 + 1;
+        d9.houses[i] = []; d9.houseRasis[i] = (refD9 + i - 1) % 12 + 1;
+        d60.houses[i] = []; d60.houseRasis[i] = (refD60 + i - 1) % 12 + 1;
     }
-
     planets.forEach(p => {
-        if (p.house >= 1 && p.house <= 12) {
-            d1Houses[p.house].push({ symbol: p.symbol, isRetrograde: p.isRetrograde });
-        }
-
-        // D9
-        const d9RasiIdx = getD9Rasi(p.longitude);
-        const d9House = ((d9RasiIdx - lagnaD9RasiIdx + 12) % 12) + 1;
-        if (d9House >= 1 && d9House <= 12) {
-            d9Houses[d9House].push({ symbol: p.symbol, isRetrograde: p.isRetrograde });
-        }
-
-        // D60
-        const d60RasiIdx = getD60Rasi(p.longitude);
-        const d60House = ((d60RasiIdx - lagnaD60RasiIdx + 12) % 12) + 1;
-        if (d60House >= 1 && d60House <= 12) {
-            d60Houses[d60House].push({ symbol: p.symbol, isRetrograde: p.isRetrograde });
-        }
+        if (p.house >= 1 && p.house <= 12) d1.houses[p.house].push({ symbol: p.symbol, isRetrograde: p.isRetrograde });
+        const h9 = (getD9Rasi(p.longitude) - refD9 + 12) % 12 + 1; if (h9 >= 1 && h9 <= 12) d9.houses[h9].push({ symbol: p.symbol, isRetrograde: p.isRetrograde });
+        const h60 = (getD60Rasi(p.longitude) - refD60 + 12) % 12 + 1; if (h60 >= 1 && h60 <= 12) d60.houses[h60].push({ symbol: p.symbol, isRetrograde: p.isRetrograde });
     });
 
-    const predictions = generatePredictions(planets);
-
-    let dasha, sadeSati;
-    let gocharaScore = 50;
-
-    // For Gochara, we often look from Moon.
-    const moon = planets.find(p => p.name === "Moon");
-    const planetsFromMoon = planets.map(p => {
-        if (!moon) return p;
-        const moonRasiIdx = RASIS.indexOf(moon.rasi);
-        const planetRasiIdx = RASIS.indexOf(p.rasi);
-        const houseFromMoon = ((planetRasiIdx - moonRasiIdx + 12) % 12) + 1;
-        return { ...p, house: houseFromMoon };
-    });
-
+    let dasha, sadeSati, ashtakavarga;
     if (birthDetails) {
-        const birthTransits = calculateTransits(birthDetails.date, birthDetails.lat, birthDetails.lon);
-        const natalMoon = birthTransits.planets.find(p => p.name === "Moon");
-        const transitSaturn = planets.find(p => p.name === "Saturn");
-
-        if (natalMoon) {
-            dasha = calculateVimshottariDasha(birthDetails.date, natalMoon.longitude, date);
-            if (transitSaturn) {
-                sadeSati = calculateSadeSati(natalMoon.longitude, transitSaturn.longitude);
-            }
+        const b = calculateTransits(birthDetails.date, birthDetails.lat, birthDetails.lon);
+        const nMoon = b.planets.find(p => p.name === "Moon");
+        if (nMoon) {
+            dasha = calculateVimshottariDasha(birthDetails.date, nMoon.longitude, date);
+            const tSat = planets.find(p => p.name === "Saturn");
+            if (tSat) sadeSati = calculateSadeSati(nMoon.longitude, tSat.longitude);
         }
+        ashtakavarga = calculateAshtakavarga(b.planets);
     }
+    const moonIdx = RASIS.indexOf(planets.find(p => p.name === "Moon")?.rasi || "Aries");
+    const planetsFromMoon = planets.map(p => ({ ...p, house: (RASIS.indexOf(p.rasi) - moonIdx + 12) % 12 + 1 }));
+    planetsFromMoon.forEach(p => {
+        if (["Sun", "Moon", "Mars", "Mercury", "Jupiter", "Venus", "Saturn"].includes(p.name)) {
+            p.vedha = checkVedha(p, planetsFromMoon);
+            const target = planets.find(tp => tp.name === p.name);
+            if (target) target.vedha = p.vedha;
+        }
+    });
 
-    gocharaScore = calculateGocharaScore(planetsFromMoon, dasha);
-    const remedies = getRemedies(planets, dasha, sadeSati);
+    return { planets, d1, d9, d60, predictions: generatePredictions(planetsFromMoon), dasha, sadeSati, gocharaScore: calculateGocharaScore(planetsFromMoon, dasha, ashtakavarga), remedies: getRemedies(planetsFromMoon, dasha, sadeSati), ashtakavarga };
+}
 
-    return {
-        planets,
-        d1: { houses: d1Houses, houseRasis: d1HouseRasis },
-        d9: { houses: d9Houses, houseRasis: d9HouseRasis },
-        d60: { houses: d60Houses, houseRasis: d60HouseRasis },
-        predictions,
-        dasha,
-        sadeSati,
-        gocharaScore,
-        remedies
+function calculateAshtakavarga(natal: PlanetData[]): AshtakavargaData {
+    const bav: { [key: string]: number[] } = {}, sav = new Array(12).fill(0), main = ["Sun", "Moon", "Mars", "Mercury", "Jupiter", "Venus", "Saturn"];
+    const rasis: { [key: string]: number } = {}; [...main, "Ascendant"].forEach(n => rasis[n] = Math.floor((natal.find(p => p.name === n)?.longitude || 0) / 30));
+    const rules: { [key: string]: { [key: string]: number[] } } = {
+        "Sun": { "Sun": [1, 2, 4, 7, 8, 9, 10, 11], "Moon": [3, 6, 10, 11], "Mars": [1, 2, 4, 7, 8, 9, 10, 11], "Mercury": [3, 5, 6, 9, 10, 11, 12], "Jupiter": [5, 6, 9, 11], "Venus": [6, 7, 12], "Saturn": [1, 2, 4, 7, 8, 9, 10, 11], "Ascendant": [3, 4, 6, 10, 11, 12] },
+        "Moon": { "Sun": [3, 6, 7, 8, 10, 11], "Moon": [1, 3, 6, 7, 10, 11], "Mars": [2, 3, 5, 6, 9, 10, 11], "Mercury": [1, 3, 4, 5, 7, 8, 10, 11], "Jupiter": [1, 4, 7, 8, 10, 11, 12], "Venus": [3, 4, 5, 7, 9, 10, 11], "Saturn": [3, 5, 6, 11], "Ascendant": [3, 6, 10, 11] },
+        "Mars": { "Sun": [3, 5, 6, 10, 11], "Moon": [3, 6, 11], "Mars": [1, 2, 4, 7, 8, 10, 11], "Mercury": [3, 5, 6, 11], "Jupiter": [6, 10, 11, 12], "Venus": [6, 8, 11, 12], "Saturn": [1, 4, 7, 8, 9, 10, 11], "Ascendant": [1, 3, 6, 10, 11] },
+        "Mercury": { "Sun": [5, 6, 9, 11, 12], "Moon": [2, 4, 6, 8, 10, 11], "Mars": [1, 2, 4, 7, 8, 9, 10, 11], "Mercury": [1, 3, 5, 6, 9, 10, 11, 12], "Jupiter": [6, 8, 11, 12], "Venus": [1, 2, 3, 4, 5, 8, 9, 11], "Saturn": [1, 2, 4, 7, 8, 9, 10, 11], "Ascendant": [1, 2, 4, 6, 8, 10, 11] },
+        "Jupiter": { "Sun": [1, 2, 3, 4, 7, 8, 9, 10, 11], "Moon": [2, 5, 7, 9, 11], "Mars": [1, 2, 4, 7, 8, 10, 11], "Mercury": [1, 2, 4, 5, 6, 9, 10, 11], "Jupiter": [1, 2, 3, 4, 7, 8, 10, 11], "Venus": [2, 5, 6, 9, 10, 11], "Saturn": [3, 5, 6, 12], "Ascendant": [1, 2, 4, 5, 6, 7, 9, 10, 11] },
+        "Venus": { "Sun": [8, 11, 12], "Moon": [1, 2, 3, 4, 5, 8, 9, 11, 12], "Mars": [3, 5, 6, 9, 11, 12], "Mercury": [3, 5, 6, 9, 11], "Jupiter": [5, 8, 9, 10, 11], "Venus": [1, 2, 3, 4, 5, 8, 9, 10, 11], "Saturn": [3, 4, 5, 8, 9, 10, 11], "Ascendant": [1, 2, 3, 4, 5, 8, 9, 11] },
+        "Saturn": { "Sun": [1, 2, 4, 7, 8, 10, 11], "Moon": [3, 6, 11], "Mars": [3, 5, 6, 10, 11, 12], "Mercury": [6, 8, 9, 10, 11, 12], "Jupiter": [5, 6, 11, 12], "Venus": [6, 11, 12], "Saturn": [3, 5, 6, 11], "Ascendant": [1, 3, 4, 6, 10, 11] }
     };
+    main.forEach(p => {
+        const s = new Array(12).fill(0);
+        for (let i = 0; i < 12; i++) {
+            [...main, "Ascendant"].forEach(src => { if (rules[p][src].includes((i - rasis[src] + 12) % 12 + 1)) { s[i]++; sav[i]++; } });
+        }
+        bav[p] = s;
+    });
+    return { bav, sav };
+}
+
+function checkVedha(p: PlanetData, all: PlanetData[]): { isObstructed: boolean, obstructingPlanet?: string } {
+    const pairs: { [key: string]: { [key: number]: number } } = { "Sun": { 3: 9, 6: 12, 10: 4, 11: 5, 9: 3, 12: 6, 4: 10, 5: 11 }, "Moon": { 1: 5, 3: 9, 6: 12, 7: 2, 10: 4, 11: 8, 5: 1, 9: 3, 12: 6, 2: 7, 4: 10, 8: 11 }, "Mars": { 3: 12, 6: 9, 11: 5, 12: 3, 9: 6, 5: 11 }, "Mercury": { 2: 5, 4: 3, 6: 9, 8: 1, 10: 7, 11: 12, 5: 2, 3: 4, 9: 6, 1: 8, 7: 10, 12: 11 }, "Jupiter": { 2: 12, 5: 4, 7: 3, 9: 10, 11: 8, 12: 2, 4: 5, 3: 7, 10: 9, 8: 11 }, "Venus": { 1: 8, 2: 7, 3: 1, 4: 10, 5: 9, 8: 1, 9: 5, 10: 4, 11: 3, 12: 6, 7: 2, 6: 12 }, "Saturn": { 3: 12, 6: 9, 11: 5, 12: 3, 9: 6, 5: 11 } };
+    const vH = pairs[p.name]?.[p.house]; if (!vH) return { isObstructed: false };
+    const obs = all.find(o => o.house === vH && o.name !== p.name && o.name !== "Ascendant");
+    if (obs) {
+        if ((p.name === "Sun" && obs.name === "Saturn") || (p.name === "Saturn" && obs.name === "Sun")) return { isObstructed: false };
+        if ((p.name === "Moon" && obs.name === "Mercury") || (p.name === "Mercury" && obs.name === "Moon")) return { isObstructed: false };
+        return { isObstructed: true, obstructingPlanet: obs.name };
+    }
+    return { isObstructed: false };
 }
