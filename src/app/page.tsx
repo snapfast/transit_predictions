@@ -3,23 +3,34 @@
 import { useState, useEffect, useRef, KeyboardEvent } from "react";
 import { calculateTransits, PlanetData, DivisionalChartData, Predictions, DashaInfo, SadeSatiInfo, Remedy, AyanamsaType, AshtakavargaData } from "@/lib/astrology";
 import KundliChart, { ChartStyle } from "@/components/KundliChart";
-import { Clock, MapPin, Calendar, Sun, Moon, Info, Sparkles } from "lucide-react";
+import { Clock, MapPin, Calendar, Sun, Moon, Info, Sparkles, User, Navigation } from "lucide-react";
 
 interface Suggestion { name: string; lat: string; lon: string; }
 const SUGGESTIONS_CACHE = new Map<string, Suggestion[]>();
 
 export default function Home() {
-  const [dateStr, setDateStr] = useState<string>("");
-  const [timeStr, setTimeStr] = useState<string>("");
-  const [lat, setLat] = useState<number>(28.6139);
-  const [lon, setLon] = useState<number>(77.2090);
-  const [pob, setPob] = useState<string>("New Delhi, Delhi, India");
+  // Birth Profile State
+  const [birthDateStr, setBirthDateStr] = useState<string>("");
+  const [birthTimeStr, setBirthTimeStr] = useState<string>("");
+  const [birthLat, setBirthLat] = useState<number>(28.6139);
+  const [birthLon, setBirthLon] = useState<number>(77.2090);
+  const [birthPob, setBirthPob] = useState<string>("New Delhi, Delhi, India");
+
+  // Transit Parameters State
+  const [transitDateStr, setTransitDateStr] = useState<string>("");
+  const [transitTimeStr, setTransitTimeStr] = useState<string>("");
+  const [transitLat, setTransitLat] = useState<number>(28.6139);
+  const [transitLon, setTransitLon] = useState<number>(77.2090);
+  const [transitPob, setTransitPob] = useState<string>("New Delhi, Delhi, India");
+
+  // City Search State
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
-  const [showSuggestions, setShowSuggestions] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  const [showSuggestionsFor, setShowSuggestionsFor] = useState<"birth" | "transit" | null>(null);
+  const [isLoadingCity, setIsLoadingCity] = useState(false);
   const [activeSuggestionIndex, setActiveSuggestionIndex] = useState(-1);
   const suggestionRef = useRef<HTMLDivElement>(null);
 
+  // Astrological Data State
   const [planets, setPlanets] = useState<PlanetData[]>([]);
   const [chartData, setChartData] = useState<DivisionalChartData | null>(null);
   const [d9Data, setD9Data] = useState<DivisionalChartData | null>(null);
@@ -33,45 +44,80 @@ export default function Home() {
   const [timelineEvents, setTimelineEvents] = useState<Array<{ day: number, label: string }>>([]);
   const [ashtakavarga, setAshtakavarga] = useState<AshtakavargaData | undefined>(undefined);
   const [remedies, setRemedies] = useState<Remedy[]>([]);
+
+  // UI State
   const [activeTab, setActiveTab] = useState("dashboard");
   const [ayanamsa, setAyanamsa] = useState<AyanamsaType>("Lahiri");
   const [referencePoint, setReferencePoint] = useState<"Moon" | "Lagna" | "Dasha Lord">("Moon");
   const [chartStyle, setChartStyle] = useState<ChartStyle>("North");
   const [scrubDays, setScrubDays] = useState<number>(0);
+  const [isInitialized, setIsInitialized] = useState(false);
 
+  // Load from local storage and set initial transit time
   useEffect(() => {
     queueMicrotask(() => {
+      // 1. Load birth details from local storage if available
+      const savedBirthDate = localStorage.getItem("birthDateStr");
+      const savedBirthTime = localStorage.getItem("birthTimeStr");
+      const savedBirthLat = localStorage.getItem("birthLat");
+      const savedBirthLon = localStorage.getItem("birthLon");
+      const savedBirthPob = localStorage.getItem("birthPob");
+
+      if (savedBirthDate) setBirthDateStr(savedBirthDate);
+      if (savedBirthTime) setBirthTimeStr(savedBirthTime);
+      if (savedBirthLat) setBirthLat(parseFloat(savedBirthLat));
+      if (savedBirthLon) setBirthLon(parseFloat(savedBirthLon));
+      if (savedBirthPob) setBirthPob(savedBirthPob);
+
+      // 2. Set transit defaults to "Right Now"
       const now = new Date();
-      // Use local date parts to prevent timezone shifts (e.g., getting yesterday's date in UTC)
       const year = now.getFullYear();
       const month = String(now.getMonth() + 1).padStart(2, '0');
       const day = String(now.getDate()).padStart(2, '0');
       const hours = String(now.getHours()).padStart(2, '0');
       const minutes = String(now.getMinutes()).padStart(2, '0');
 
-      setDateStr(`${year}-${month}-${day}`);
-      setTimeStr(`${hours}:${minutes}`);
+      setTransitDateStr(`${year}-${month}-${day}`);
+      setTransitTimeStr(`${hours}:${minutes}`);
+
+      // If no saved birth details, default birth to exactly 30 years ago from now (as a sensible placeholder)
+      if (!savedBirthDate) setBirthDateStr(`${year - 30}-${month}-${day}`);
+      if (!savedBirthTime) setBirthTimeStr(`12:00`);
+
+      setIsInitialized(true);
     });
   }, []);
 
-  // City Search logic
+  // Save birth details to local storage when they change
   useEffect(() => {
-    if (pob.length < 3) {
+    if (!isInitialized) return;
+    localStorage.setItem("birthDateStr", birthDateStr);
+    localStorage.setItem("birthTimeStr", birthTimeStr);
+    localStorage.setItem("birthLat", birthLat.toString());
+    localStorage.setItem("birthLon", birthLon.toString());
+    localStorage.setItem("birthPob", birthPob);
+  }, [birthDateStr, birthTimeStr, birthLat, birthLon, birthPob, isInitialized]);
+
+  // Unified City Search logic
+  useEffect(() => {
+    const query = showSuggestionsFor === "birth" ? birthPob : (showSuggestionsFor === "transit" ? transitPob : "");
+
+    if (!showSuggestionsFor || query.length < 3) {
       queueMicrotask(() => setSuggestions([]));
       return;
     }
 
-    if (SUGGESTIONS_CACHE.has(pob)) {
-      queueMicrotask(() => setSuggestions(SUGGESTIONS_CACHE.get(pob)!));
+    if (SUGGESTIONS_CACHE.has(query)) {
+      queueMicrotask(() => setSuggestions(SUGGESTIONS_CACHE.get(query)!));
       return;
     }
 
     const controller = new AbortController();
     const timer = setTimeout(async () => {
       try {
-        setIsLoading(true);
+        setIsLoadingCity(true);
         const res = await fetch(
-          `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(pob)}&limit=5`,
+          `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5`,
           {
             signal: controller.signal,
             headers: { 'User-Agent': 'VedicTransitApp/1.0' }
@@ -84,7 +130,7 @@ export default function Home() {
           lon: item.lon,
         }));
 
-        SUGGESTIONS_CACHE.set(pob, results);
+        SUGGESTIONS_CACHE.set(query, results);
         if (SUGGESTIONS_CACHE.size > 100) {
           const firstKey = SUGGESTIONS_CACHE.keys().next().value;
           if (firstKey) SUGGESTIONS_CACHE.delete(firstKey);
@@ -93,7 +139,7 @@ export default function Home() {
       } catch (err: unknown) {
         if (err instanceof Error && err.name !== 'AbortError') console.error(err);
       } finally {
-        setIsLoading(false);
+        setIsLoadingCity(false);
       }
     }, 500);
 
@@ -101,32 +147,36 @@ export default function Home() {
       clearTimeout(timer);
       controller.abort();
     };
-  }, [pob]);
+  }, [birthPob, transitPob, showSuggestionsFor]);
 
+  // Main Calculation Effect
   useEffect(() => {
-    if (!dateStr || !timeStr) return;
+    if (!isInitialized || !birthDateStr || !birthTimeStr || !transitDateStr || !transitTimeStr) return;
 
     const timer = setTimeout(() => {
-      const [y, m, d] = dateStr.split('-').map(Number);
-      const [h, min] = timeStr.split(':').map(Number);
+      const [by, bm, bd] = birthDateStr.split('-').map(Number);
+      const [bh, bmin] = birthTimeStr.split(':').map(Number);
+      const birthDateObj = new Date(by, bm - 1, bd, bh, bmin);
 
-      const birthDate = new Date(y, m - 1, d, h, min);
-      let calculationDate = new Date(birthDate);
+      const [ty, tm, td] = transitDateStr.split('-').map(Number);
+      const [th, tmin] = transitTimeStr.split(':').map(Number);
+      let calculationDate = new Date(ty, tm - 1, td, th, tmin);
+
       if (scrubDays !== 0) {
         calculationDate = new Date(calculationDate.getTime() + scrubDays * 24 * 60 * 60 * 1000);
       }
 
-      const birthDetails = { date: birthDate, lat, lon };
+      const birthDetails = { date: birthDateObj, lat: birthLat, lon: birthLon };
 
       let refPlanetName: string = referencePoint === "Moon" ? "Moon" : "Ascendant";
       if (referencePoint === "Dasha Lord") {
-        const { dasha: initialDasha } = calculateTransits(calculationDate, lat, lon, birthDetails, ayanamsa);
+        const { dasha: initialDasha } = calculateTransits(calculationDate, transitLat, transitLon, birthDetails, ayanamsa);
         if (initialDasha) {
           refPlanetName = initialDasha.mahadasha.lord;
         }
       }
 
-      const res = calculateTransits(calculationDate, lat, lon, birthDetails, ayanamsa, refPlanetName);
+      const res = calculateTransits(calculationDate, transitLat, transitLon, birthDetails, ayanamsa, refPlanetName);
 
       // Calculate timeline scores and events (Optimized: No birthDetails to skip redundant heavy logic)
       const scores: number[] = [];
@@ -137,7 +187,7 @@ export default function Home() {
       for (let i = 0; i <= 60; i++) {
         const d = new Date(startTime.getTime() + i * 24 * 60 * 60 * 1000);
         // By omitting birthDetails here, calculateTransits skips Dasha, Sade Sati, and Ashtakavarga recursions
-        const t = calculateTransits(d, lat, lon, undefined, ayanamsa, refPlanetName);
+        const t = calculateTransits(d, transitLat, transitLon, undefined, ayanamsa, refPlanetName);
 
         if (i % 2 === 0) {
           scores.push(t.gocharaScore);
@@ -168,14 +218,14 @@ export default function Home() {
         setRemedies(res.remedies);
 
         if (birthDetails) {
-            const natal = calculateTransits(birthDetails.date, birthDetails.lat, birthDetails.lon);
+            const natal = calculateTransits(birthDetails.date, birthDetails.lat, birthDetails.lon, undefined, ayanamsa);
             setNatalChart(natal.d1);
         }
       });
     }, 200);
 
     return () => clearTimeout(timer);
-  }, [dateStr, timeStr, lat, lon, scrubDays, ayanamsa, referencePoint]);
+  }, [birthDateStr, birthTimeStr, birthLat, birthLon, transitDateStr, transitTimeStr, transitLat, transitLon, scrubDays, ayanamsa, referencePoint, isInitialized]);
 
   const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "ArrowDown") {
@@ -187,13 +237,21 @@ export default function Home() {
     } else if (e.key === "Enter" && activeSuggestionIndex >= 0) {
       e.preventDefault();
       const s = suggestions[activeSuggestionIndex];
-      setPob(s.name);
-      setLat(parseFloat(s.lat));
-      setLon(parseFloat(s.lon));
+      if (showSuggestionsFor === "birth") {
+        setBirthPob(s.name);
+        setBirthLat(parseFloat(s.lat));
+        setBirthLon(parseFloat(s.lon));
+      } else if (showSuggestionsFor === "transit") {
+        setTransitPob(s.name);
+        setTransitLat(parseFloat(s.lat));
+        setTransitLon(parseFloat(s.lon));
+      }
       setSuggestions([]);
+      setShowSuggestionsFor(null);
       setActiveSuggestionIndex(-1);
     } else if (e.key === "Escape") {
       setSuggestions([]);
+      setShowSuggestionsFor(null);
       setActiveSuggestionIndex(-1);
     }
   };
@@ -202,85 +260,115 @@ export default function Home() {
     const handleClickOutside = (event: MouseEvent) => {
       if (suggestionRef.current && !suggestionRef.current.contains(event.target as Node)) {
         setSuggestions([]);
+        setShowSuggestionsFor(null);
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  const handleSuggestionSelect = (s: Suggestion) => {
+    if (showSuggestionsFor === "birth") {
+      setBirthPob(s.name);
+      setBirthLat(parseFloat(s.lat));
+      setBirthLon(parseFloat(s.lon));
+    } else if (showSuggestionsFor === "transit") {
+      setTransitPob(s.name);
+      setTransitLat(parseFloat(s.lat));
+      setTransitLon(parseFloat(s.lon));
+    }
+    setSuggestions([]);
+    setShowSuggestionsFor(null);
+  };
+
   return (
-    <main className="min-h-screen flex flex-col pb-20 bg-[#F9F7F1] text-[#1D4046] font-sans">
-      <div className="flex-1 max-w-7xl mx-auto w-full p-4 md:p-8 space-y-8">
-        <section className="bg-white p-6 rounded-2xl shadow-sm border border-[#1D4046]/10 flex flex-col md:flex-row gap-6 items-end justify-center">
-          <div className="space-y-2 flex-1 min-w-[200px] relative" ref={suggestionRef}>
-            <label className="text-sm font-semibold text-[#1D4046]/60 flex items-center gap-2">
-              <MapPin className="w-4 h-4 text-[#F59E0B]"/> City
-            </label>
-            <div className="relative">
-              <input
-                value={pob}
-                onChange={e => { setPob(e.target.value); setShowSuggestions(true); }}
-                onKeyDown={handleKeyDown}
-                onFocus={() => setShowSuggestions(true)}
-                className="w-full p-2 bg-[#F9F7F1] border border-[#1D4046]/20 rounded-lg outline-none focus:ring-1 focus:ring-[#F59E0B]"
-                placeholder="Search city..."
-              />
-              {isLoading && <div className="absolute right-3 top-2.5 animate-spin w-4 h-4 border-2 border-[#F59E0B] border-t-transparent rounded-full" />}
-            </div>
+    <main className="min-h-screen flex flex-col pb-24 bg-[#F9F7F1] text-[#1D4046] font-sans">
+      <div className="flex-1 max-w-7xl mx-auto w-full p-4 md:p-8 space-y-8 relative">
 
-            {showSuggestions && suggestions.length > 0 && (
-              <div className="absolute z-50 w-full mt-1 bg-white border border-[#1D4046]/10 rounded-xl shadow-xl overflow-hidden max-h-60 overflow-y-auto">
-                {suggestions.map((s, i) => (
-                  <button
-                    key={i}
-                    onClick={() => {
-                      setPob(s.name);
-                      setLat(parseFloat(s.lat));
-                      setLon(parseFloat(s.lon));
-                      setSuggestions([]);
-                      setShowSuggestions(false);
-                    }}
-                    onMouseEnter={() => setActiveSuggestionIndex(i)}
-                    className={`w-full text-left px-4 py-3 text-sm border-b border-[#1D4046]/5 last:border-0 transition-colors ${i === activeSuggestionIndex ? 'bg-[#F59E0B]/10 text-[#F59E0B] font-bold' : 'text-[#1D4046]/80 hover:bg-[#F9F7F1]'}`}
-                  >
-                    {s.name}
-                  </button>
-                ))}
+        {/* Global Input Section */}
+        <section className="bg-white p-6 rounded-2xl shadow-sm border border-[#1D4046]/10 flex flex-col lg:flex-row gap-6 relative" ref={suggestionRef}>
+
+          {/* Birth Profile Inputs */}
+          <div className="flex-1 space-y-4 border-b lg:border-b-0 lg:border-r border-[#1D4046]/10 pb-6 lg:pb-0 lg:pr-6">
+            <h2 className="text-xl font-serif text-[#1D4046] flex items-center gap-2">
+                <User className="w-5 h-5 text-[#F59E0B]" /> Natal Chart Profile
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2 col-span-1 md:col-span-2 relative">
+                <label className="text-sm font-semibold text-[#1D4046]/60 flex items-center gap-2">
+                  <MapPin className="w-4 h-4 text-[#F59E0B]"/> Birth City
+                </label>
+                <div className="relative">
+                  <input
+                    value={birthPob}
+                    onChange={e => { setBirthPob(e.target.value); setShowSuggestionsFor("birth"); }}
+                    onKeyDown={handleKeyDown}
+                    onFocus={() => setShowSuggestionsFor("birth")}
+                    className="w-full p-2 bg-[#F9F7F1] border border-[#1D4046]/20 rounded-lg outline-none focus:ring-1 focus:ring-[#F59E0B]"
+                    placeholder="Search birth city..."
+                  />
+                  {isLoadingCity && showSuggestionsFor === "birth" && <div className="absolute right-3 top-2.5 animate-spin w-4 h-4 border-2 border-[#F59E0B] border-t-transparent rounded-full" />}
+                </div>
               </div>
-            )}
-          </div>
-
-          <div className="flex gap-4 w-full md:w-auto">
-            <div className="space-y-2 flex-1 min-w-[80px]">
-              <label className="text-[10px] font-bold text-[#1D4046]/40 uppercase tracking-widest">Lat</label>
-              <input
-                type="number"
-                step="any"
-                value={lat}
-                onChange={e => setLat(parseFloat(e.target.value))}
-                className="w-full p-2 bg-[#F9F7F1] border border-[#1D4046]/20 rounded-lg outline-none text-sm"
-              />
-            </div>
-            <div className="space-y-2 flex-1 min-w-[80px]">
-              <label className="text-[10px] font-bold text-[#1D4046]/40 uppercase tracking-widest">Lon</label>
-              <input
-                type="number"
-                step="any"
-                value={lon}
-                onChange={e => setLon(parseFloat(e.target.value))}
-                className="w-full p-2 bg-[#F9F7F1] border border-[#1D4046]/20 rounded-lg outline-none text-sm"
-              />
+              <div className="space-y-2">
+                <label className="text-sm font-semibold text-[#1D4046]/60 flex items-center gap-2"><Calendar className="w-4 h-4 text-[#F59E0B]"/> Birth Date</label>
+                <input type="date" value={birthDateStr} onChange={e => setBirthDateStr(e.target.value)} className="w-full p-2 bg-[#F9F7F1] border border-[#1D4046]/20 rounded-lg outline-none" />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-semibold text-[#1D4046]/60 flex items-center gap-2"><Clock className="w-4 h-4 text-[#F59E0B]"/> Birth Time</label>
+                <input type="time" value={birthTimeStr} onChange={e => setBirthTimeStr(e.target.value)} className="w-full p-2 bg-[#F9F7F1] border border-[#1D4046]/20 rounded-lg outline-none" />
+              </div>
             </div>
           </div>
 
-          <div className="space-y-2 flex-1 min-w-[140px]">
-            <label className="text-sm font-semibold text-[#1D4046]/60 flex items-center gap-2"><Calendar className="w-4 h-4 text-[#F59E0B]"/> Date</label>
-            <input type="date" value={dateStr} onChange={e => setDateStr(e.target.value)} className="w-full p-2 bg-[#F9F7F1] border border-[#1D4046]/20 rounded-lg outline-none" />
+          {/* Transit Parameters Inputs */}
+          <div className="flex-1 space-y-4">
+             <h2 className="text-xl font-serif text-[#1D4046] flex items-center gap-2">
+                <Navigation className="w-5 h-5 text-[#F59E0B]" /> Transit Parameters
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2 col-span-1 md:col-span-2 relative">
+                <label className="text-sm font-semibold text-[#1D4046]/60 flex items-center gap-2">
+                  <MapPin className="w-4 h-4 text-[#F59E0B]"/> Transit City
+                </label>
+                <div className="relative">
+                  <input
+                    value={transitPob}
+                    onChange={e => { setTransitPob(e.target.value); setShowSuggestionsFor("transit"); }}
+                    onKeyDown={handleKeyDown}
+                    onFocus={() => setShowSuggestionsFor("transit")}
+                    className="w-full p-2 bg-[#F9F7F1] border border-[#1D4046]/20 rounded-lg outline-none focus:ring-1 focus:ring-[#F59E0B]"
+                    placeholder="Search transit city..."
+                  />
+                  {isLoadingCity && showSuggestionsFor === "transit" && <div className="absolute right-3 top-2.5 animate-spin w-4 h-4 border-2 border-[#F59E0B] border-t-transparent rounded-full" />}
+                </div>
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-semibold text-[#1D4046]/60 flex items-center gap-2"><Calendar className="w-4 h-4 text-[#F59E0B]"/> Transit Date</label>
+                <input type="date" value={transitDateStr} onChange={e => setTransitDateStr(e.target.value)} className="w-full p-2 bg-[#F9F7F1] border border-[#1D4046]/20 rounded-lg outline-none" />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-semibold text-[#1D4046]/60 flex items-center gap-2"><Clock className="w-4 h-4 text-[#F59E0B]"/> Transit Time</label>
+                <input type="time" value={transitTimeStr} onChange={e => setTransitTimeStr(e.target.value)} className="w-full p-2 bg-[#F9F7F1] border border-[#1D4046]/20 rounded-lg outline-none" />
+              </div>
+            </div>
           </div>
-          <div className="space-y-2 flex-1 min-w-[120px]">
-            <label className="text-sm font-semibold text-[#1D4046]/60 flex items-center gap-2"><Clock className="w-4 h-4 text-[#F59E0B]"/> Time</label>
-            <input type="time" value={timeStr} onChange={e => setTimeStr(e.target.value)} className="w-full p-2 bg-[#F9F7F1] border border-[#1D4046]/20 rounded-lg outline-none" />
-          </div>
+
+          {/* Shared Suggestions Dropdown */}
+          {showSuggestionsFor && suggestions.length > 0 && (
+            <div className="absolute z-50 w-[calc(100%-3rem)] md:w-[400px] mt-1 bg-white border border-[#1D4046]/10 rounded-xl shadow-xl overflow-hidden max-h-60 overflow-y-auto" style={{ top: "100%", left: showSuggestionsFor === "birth" ? "1.5rem" : "auto", right: showSuggestionsFor === "transit" ? "1.5rem" : "auto" }}>
+              {suggestions.map((s, i) => (
+                <button
+                  key={i}
+                  onClick={() => handleSuggestionSelect(s)}
+                  onMouseEnter={() => setActiveSuggestionIndex(i)}
+                  className={`w-full text-left px-4 py-3 text-sm border-b border-[#1D4046]/5 last:border-0 transition-colors ${i === activeSuggestionIndex ? 'bg-[#F59E0B]/10 text-[#F59E0B] font-bold' : 'text-[#1D4046]/80 hover:bg-[#F9F7F1]'}`}
+                >
+                  {s.name}
+                </button>
+              ))}
+            </div>
+          )}
         </section>
 
         {activeTab === "dashboard" && (
@@ -360,7 +448,7 @@ export default function Home() {
                     <div className="flex justify-between items-end">
                         <div>
                             <div className="text-xs font-bold text-[#1D4046]/40 uppercase tracking-widest mb-1">Interactive Scrubber</div>
-                            <div className="text-2xl font-serif">{scrubDays === 0 ? 'Today' : `${Math.abs(scrubDays)} days ${scrubDays > 0 ? 'forward' : 'back'}`}</div>
+                            <div className="text-2xl font-serif">{scrubDays === 0 ? 'Transit Date' : `${Math.abs(scrubDays)} days ${scrubDays > 0 ? 'forward' : 'back'}`}</div>
                         </div>
                         <div className="text-4xl font-serif text-[#F59E0B]">{gocharaScore.toFixed(1)}%</div>
                     </div>
@@ -437,7 +525,7 @@ export default function Home() {
                     ))}
                 </div>
                 <section className="bg-white p-8 rounded-3xl border border-[#1D4046]/10 shadow-sm">
-                    <h2 className="text-2xl font-serif mb-8 text-[#1D4046]">Detailed Planetary Positions</h2>
+                    <h2 className="text-2xl font-serif mb-8 text-[#1D4046]">Detailed Planetary Positions (Transit)</h2>
                     <div className="overflow-x-auto">
                         <table className="w-full text-left text-sm">
                             <thead className="border-b border-[#1D4046]/10">
