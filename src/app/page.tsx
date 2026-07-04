@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, KeyboardEvent } from "react";
 import { calculateTransits, PlanetData, DivisionalChartData, Predictions, DashaInfo, SadeSatiInfo, Remedy, AyanamsaType, AshtakavargaData } from "@/lib/astrology";
 import KundliChart, { ChartStyle } from "@/components/KundliChart";
-import { Clock, MapPin, Calendar, Sun, Moon, Info, Sparkles, User, Navigation, ChevronDown, ChevronUp, Settings, Edit2 } from "lucide-react";
+import { Clock, MapPin, Calendar, Sun, Moon, Info, Sparkles, User, Navigation, ChevronUp, Settings, Edit2 } from "lucide-react";
 
 interface Suggestion { name: string; lat: string; lon: string; }
 const SUGGESTIONS_CACHE = new Map<string, Suggestion[]>();
@@ -35,7 +35,8 @@ export default function Home() {
   const [chartData, setChartData] = useState<DivisionalChartData | null>(null);
   const [d9Data, setD9Data] = useState<DivisionalChartData | null>(null);
   const [d60Data, setD60Data] = useState<DivisionalChartData | null>(null);
-  const [predictions, setPredictions] = useState<Predictions>({ placements: [], aspects: [], yogas: [] });
+  const [predictionsMoon, setPredictionsMoon] = useState<Predictions>({ placements: [], aspects: [], yogas: [] });
+  const [predictionsLagna, setPredictionsLagna] = useState<Predictions>({ placements: [], aspects: [], yogas: [] });
   const [dasha, setDasha] = useState<DashaInfo | undefined>(undefined);
   const [sadeSati, setSadeSati] = useState<SadeSatiInfo | undefined>(undefined);
   const [natalChart, setNatalChart] = useState<DivisionalChartData | null>(null);
@@ -49,6 +50,7 @@ export default function Home() {
   const [activeTab, setActiveTab] = useState("dashboard");
   const [ayanamsa, setAyanamsa] = useState<AyanamsaType>("Lahiri");
   const [referencePoint, setReferencePoint] = useState<"Moon" | "Lagna" | "Dasha Lord">("Moon");
+  const [predictionReference, setPredictionReference] = useState<"Moon" | "Lagna">("Moon");
   const [chartStyle, setChartStyle] = useState<ChartStyle>("North");
   const [scrubDays, setScrubDays] = useState<number>(0);
   const [isInitialized, setIsInitialized] = useState(false);
@@ -212,7 +214,8 @@ export default function Home() {
         setChartData(res.d1);
         setD9Data(res.d9);
         setD60Data(res.d60);
-        setPredictions(res.predictions);
+        setPredictionsMoon(res.predictionsMoon);
+        setPredictionsLagna(res.predictionsLagna);
         setDasha(res.dasha);
         setSadeSati(res.sadeSati);
         setGocharaScore(res.gocharaScore);
@@ -497,58 +500,67 @@ export default function Home() {
                   </div>
                 )}
             </section>
+          </div>
+        )}
 
-            <div className="space-y-12">
-              {/* Major Influences Section */}
-              <section className="space-y-6">
-                <h2 className="text-xs font-bold text-[#1D4046]/60 uppercase tracking-[0.3em] flex items-center gap-3">
-                  <div className="h-px w-8 bg-[#F59E0B]/40" /> Major Influences
-                </h2>
-                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {planets.filter(p => ["Sun", "Moon", dasha?.mahadasha.lord].includes(p.name)).map((p, i) => (
-                      <div key={i} className="bg-white p-6 rounded-[2rem] border border-[#1D4046]/10 shadow-sm hover:shadow-md transition-all border-l-4 border-l-[#F59E0B]">
-                          <div className="flex justify-between items-start mb-4">
-                              <h3 className="font-serif text-lg font-bold">{p.name} in {p.house}{p.house === 1 ? 'st' : p.house === 2 ? 'nd' : p.house === 3 ? 'rd' : 'th'} House</h3>
-                              <span className="text-[10px] font-bold bg-[#F9F7F1] px-2 py-1 rounded border border-[#1D4046]/10 uppercase">{p.rasi}</span>
-                          </div>
-                          <p className="text-sm text-[#1D4046]/80 leading-relaxed mb-4">{predictions.placements.find(pr => pr.startsWith(p.name))?.split(': ')[1] || 'Analyzing transit impact...'}</p>
-                          <div className="flex gap-3">
-                              {p.vedha?.isObstructed && <span className="text-[10px] font-bold text-red-600 bg-red-50 px-2 py-0.5 rounded">Vedha: {p.vedha.obstructingPlanet}</span>}
-                              {p.isRetrograde && <span className="text-[10px] font-bold text-orange-600 bg-orange-50 px-2 py-0.5 rounded">Retrograde</span>}
-                          </div>
-                      </div>
-                  ))}
+        {activeTab === "predictions" && (
+          <div className="space-y-8 animate-in fade-in duration-500">
+            <header className="flex flex-col md:flex-row justify-between items-center gap-4">
+              <h1 className="text-4xl font-serif text-[#1D4046] tracking-tight">Predictions</h1>
+              <div className="flex flex-wrap gap-4">
+                <div className="flex bg-white rounded-lg border border-[#1D4046]/10 p-1 shadow-sm">
+                  {["Moon", "Lagna"].map(r => <button key={r} onClick={() => setPredictionReference(r as "Moon" | "Lagna")} className={`px-3 py-1 text-xs rounded-md transition-all ${predictionReference === r ? 'bg-[#1D4046] text-white font-bold' : 'text-[#1D4046]/60 hover:bg-[#F9F7F1]'}`}>From {r}</button>)}
                 </div>
-              </section>
+              </div>
+            </header>
 
-              {/* Supporting Transits Section */}
-              <section className="space-y-6">
-                <h2 className="text-xs font-bold text-[#1D4046]/60 uppercase tracking-[0.3em] flex items-center gap-3">
-                  <div className="h-px w-8 bg-[#1D4046]/20" /> Supporting Transits
-                </h2>
-                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 opacity-80">
-                  {planets.filter(p => ["Mars", "Mercury", "Jupiter", "Venus", "Saturn"].includes(p.name) && p.name !== dasha?.mahadasha.lord).map((p, i) => (
-                      <div key={i} className="bg-white/60 p-6 rounded-3xl border border-[#1D4046]/10 shadow-sm hover:shadow-md transition-all">
-                          <div className="flex justify-between items-start mb-4">
-                              <h3 className="font-serif text-base font-bold">{p.name} in {p.house}{p.house === 1 ? 'st' : p.house === 2 ? 'nd' : p.house === 3 ? 'rd' : 'th'}</h3>
-                              <span className="text-[10px] font-bold bg-[#F9F7F1] px-2 py-1 rounded border border-[#1D4046]/10 uppercase">{p.rasi}</span>
-                          </div>
-                          <p className="text-xs text-[#1D4046]/70 leading-relaxed mb-4 line-clamp-3">{predictions.placements.find(pr => pr.startsWith(p.name))?.split(': ')[1] || 'Analyzing transit impact...'}</p>
-                          <div className="flex gap-3">
-                              {p.vedha?.isObstructed && <span className="text-[10px] font-bold text-gray-400 bg-gray-50 px-2 py-0.5 rounded">Vedha</span>}
-                              {p.isRetrograde && <span className="text-[10px] font-bold text-orange-600/60 bg-orange-50 px-2 py-0.5 rounded">Retrograde</span>}
-                          </div>
-                      </div>
-                  ))}
-                </div>
-              </section>
+            <div className="space-y-6">
+              <h2 className="text-xs font-bold text-[#1D4046]/60 uppercase tracking-[0.3em] flex items-center gap-3">
+                <div className="h-px w-8 bg-[#F59E0B]/40" /> Major Influences
+              </h2>
+              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {planets.filter(p => ["Sun", "Moon", dasha?.mahadasha.lord].includes(p.name)).map((p, i) => (
+                    <div key={i} className="bg-white p-6 rounded-[2rem] border border-[#1D4046]/10 shadow-sm hover:shadow-md transition-all border-l-4 border-l-[#F59E0B]">
+                        <div className="flex justify-between items-start mb-4">
+                            <h3 className="font-serif text-lg font-bold">{p.name}</h3>
+                            <span className="text-[10px] font-bold bg-[#F9F7F1] px-2 py-1 rounded border border-[#1D4046]/10 uppercase">{p.rasi}</span>
+                        </div>
+                        <p className="text-sm text-[#1D4046]/80 leading-relaxed mb-4">{(predictionReference === "Moon" ? predictionsMoon : predictionsLagna).placements.find(pr => pr.startsWith(p.name))?.split(': ')[1] || 'Analyzing transit impact...'}</p>
+                        <div className="flex gap-3">
+                            {p.vedha?.isObstructed && <span className="text-[10px] font-bold text-red-600 bg-red-50 px-2 py-0.5 rounded">Vedha: {p.vedha.obstructingPlanet}</span>}
+                            {p.isRetrograde && <span className="text-[10px] font-bold text-orange-600 bg-orange-50 px-2 py-0.5 rounded">Retrograde</span>}
+                        </div>
+                    </div>
+                ))}
+              </div>
             </div>
 
-            {predictions.yogas.length > 0 && (
+            <div className="space-y-6">
+              <h2 className="text-xs font-bold text-[#1D4046]/60 uppercase tracking-[0.3em] flex items-center gap-3">
+                <div className="h-px w-8 bg-[#1D4046]/20" /> Supporting Transits
+              </h2>
+              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 opacity-80">
+                {planets.filter(p => ["Mars", "Mercury", "Jupiter", "Venus", "Saturn"].includes(p.name) && p.name !== dasha?.mahadasha.lord).map((p, i) => (
+                    <div key={i} className="bg-white/60 p-6 rounded-3xl border border-[#1D4046]/10 shadow-sm hover:shadow-md transition-all">
+                        <div className="flex justify-between items-start mb-4">
+                            <h3 className="font-serif text-base font-bold">{p.name}</h3>
+                            <span className="text-[10px] font-bold bg-[#F9F7F1] px-2 py-1 rounded border border-[#1D4046]/10 uppercase">{p.rasi}</span>
+                        </div>
+                        <p className="text-xs text-[#1D4046]/70 leading-relaxed mb-4 line-clamp-3">{(predictionReference === "Moon" ? predictionsMoon : predictionsLagna).placements.find(pr => pr.startsWith(p.name))?.split(': ')[1] || 'Analyzing transit impact...'}</p>
+                        <div className="flex gap-3">
+                            {p.vedha?.isObstructed && <span className="text-[10px] font-bold text-gray-400 bg-gray-50 px-2 py-0.5 rounded">Vedha</span>}
+                            {p.isRetrograde && <span className="text-[10px] font-bold text-orange-600/60 bg-orange-50 px-2 py-0.5 rounded">Retrograde</span>}
+                        </div>
+                    </div>
+                ))}
+              </div>
+            </div>
+
+            {(predictionReference === "Moon" ? predictionsMoon : predictionsLagna).yogas.length > 0 && (
                 <section className="bg-[#1D4046] p-8 rounded-3xl text-white shadow-lg">
                     <h2 className="text-2xl font-serif mb-6 flex items-center gap-2"><Sparkles className="text-[#F59E0B]"/> Active Planetary Yogas</h2>
                     <div className="grid md:grid-cols-2 gap-4">
-                        {predictions.yogas.map((y, i) => {
+                        {(predictionReference === "Moon" ? predictionsMoon : predictionsLagna).yogas.map((y, i) => {
                             const [title, desc] = y.split(': ');
                             return (
                                 <div key={i} className="bg-white/10 p-4 rounded-xl border border-white/10">
@@ -610,7 +622,7 @@ export default function Home() {
                     <div className="bg-white p-8 rounded-3xl border border-[#1D4046]/10 shadow-sm">
                         <h2 className="font-serif text-xl mb-6">Detailed Forecast</h2>
                         <ul className="space-y-4">
-                            {predictions.placements.slice(0, 6).map((p, i) => (
+                            {(referencePoint === "Lagna" ? predictionsLagna : predictionsMoon).placements.slice(0, 6).map((p, i) => (
                                 <li key={i} className="flex gap-4 text-sm text-[#1D4046]/70 leading-relaxed border-b border-[#1D4046]/5 pb-4 last:border-0"><span className="text-[#F59E0B] font-bold">✦</span>{p}</li>
                             ))}
                         </ul>
@@ -768,7 +780,7 @@ export default function Home() {
       </div>
 
       <nav className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-[#1D4046]/90 backdrop-blur-md px-8 py-4 rounded-full flex gap-12 shadow-2xl items-center z-50 transition-all border border-white/10">
-        {[{id: "dashboard", icon: Sun, label: "Sky"}, {id: "timeline", icon: Moon, label: "Time"}, {id: "charts", icon: Info, label: "Deep"}, {id: "remedies", icon: Sparkles, label: "Upaya"}].map(tab => (
+        {[{id: "dashboard", icon: Sun, label: "Sky"}, {id: "predictions", icon: Sparkles, label: "Predict"}, {id: "timeline", icon: Moon, label: "Time"}, {id: "charts", icon: Info, label: "Deep"}, {id: "remedies", icon: User, label: "Upaya"}].map(tab => (
             <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`flex flex-col items-center gap-1 transition-all ${activeTab === tab.id ? 'text-[#F59E0B] scale-110' : 'text-white/40 hover:text-white/80'}`}>
                 <tab.icon className="w-5 h-5" />
                 <span className="text-[10px] font-bold uppercase tracking-[0.1em]">{tab.label}</span>

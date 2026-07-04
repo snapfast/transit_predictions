@@ -20,6 +20,6 @@ test("Advanced Jyotish Logic: Ashtakavarga and Vedha", async (t) => {
     });
 
     await t.test("Yogas are calculated", () => {
-        assert.ok(Array.isArray(result.predictions.yogas), "Yogas should be an array");
+        assert.ok(Array.isArray(result.predictionsMoon.yogas), "Yogas should be an array");
     });
 });
