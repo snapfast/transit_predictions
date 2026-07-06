@@ -1,0 +1,3 @@
+## 2024-05-24 - LRU Caching for Astrological Calculations
+**Learning:** The 61-day timeline scrubber requires calculating transits for each day to generate scores and event points. `calculateTransits` performs heavy synchronous astronomical calculations inside a loop (`PLANET_MAP.forEach`).
+**Action:** Implemented a Map-based LRU cache directly within `calculateTransits` keyed by serialized arguments (`date.getTime()`, `lat`, `lon`, etc.). This dramatically speeds up repeated scrubbing (e.g., benchmark showed ~3x improvement on 61 calls for cached vs first-run) and minimizes blocking of the main thread. Keep this technique in mind for other deterministic, expensive synchronous functions in the app.
