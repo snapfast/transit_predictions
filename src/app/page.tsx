@@ -345,11 +345,12 @@ export default function Home() {
                   <h3 className="text-sm font-bold text-[#F59E0B] uppercase tracking-[0.2em]">Birth Details</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-2 col-span-1 md:col-span-2 relative">
-                      <label className="text-xs font-bold text-[#1D4046]/40 uppercase flex items-center gap-2">
+                      <label htmlFor="birthCity" className="text-xs font-bold text-[#1D4046]/40 uppercase flex items-center gap-2 cursor-pointer hover:text-[#1D4046]/60 transition-colors">
                         <MapPin className="w-3.5 h-3.5"/> City of Birth
                       </label>
                       <div className="relative">
                         <input
+                          id="birthCity"
                           value={birthPob}
                           onChange={e => { setBirthPob(e.target.value); setShowSuggestionsFor("birth"); }}
                           onKeyDown={handleKeyDown}
@@ -377,12 +378,12 @@ export default function Home() {
                       </div>
                     </div>
                     <div className="space-y-2">
-                      <label className="text-xs font-bold text-[#1D4046]/40 uppercase flex items-center gap-2"><Calendar className="w-3.5 h-3.5"/> Date</label>
-                      <input type="date" value={birthDateStr} onChange={e => setBirthDateStr(e.target.value)} className="w-full p-3 bg-[#F9F7F1] border border-[#1D4046]/10 rounded-xl outline-none" />
+                      <label htmlFor="birthDate" className="text-xs font-bold text-[#1D4046]/40 uppercase flex items-center gap-2 cursor-pointer hover:text-[#1D4046]/60 transition-colors"><Calendar className="w-3.5 h-3.5"/> Date</label>
+                      <input id="birthDate" type="date" value={birthDateStr} onChange={e => setBirthDateStr(e.target.value)} className="w-full p-3 bg-[#F9F7F1] border border-[#1D4046]/10 rounded-xl outline-none focus:ring-2 focus:ring-[#F59E0B]/20 transition-all" />
                     </div>
                     <div className="space-y-2">
-                      <label className="text-xs font-bold text-[#1D4046]/40 uppercase flex items-center gap-2"><Clock className="w-3.5 h-3.5"/> Time</label>
-                      <input type="time" value={birthTimeStr} onChange={e => setBirthTimeStr(e.target.value)} className="w-full p-3 bg-[#F9F7F1] border border-[#1D4046]/10 rounded-xl outline-none" />
+                      <label htmlFor="birthTime" className="text-xs font-bold text-[#1D4046]/40 uppercase flex items-center gap-2 cursor-pointer hover:text-[#1D4046]/60 transition-colors"><Clock className="w-3.5 h-3.5"/> Time</label>
+                      <input id="birthTime" type="time" value={birthTimeStr} onChange={e => setBirthTimeStr(e.target.value)} className="w-full p-3 bg-[#F9F7F1] border border-[#1D4046]/10 rounded-xl outline-none focus:ring-2 focus:ring-[#F59E0B]/20 transition-all" />
                     </div>
                   </div>
                 </div>
@@ -392,11 +393,12 @@ export default function Home() {
                    <h3 className="text-sm font-bold text-[#1D4046]/40 uppercase tracking-[0.2em]">Transit Parameters</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-2 col-span-1 md:col-span-2 relative">
-                      <label className="text-xs font-bold text-[#1D4046]/40 uppercase flex items-center gap-2">
+                      <label htmlFor="transitCity" className="text-xs font-bold text-[#1D4046]/40 uppercase flex items-center gap-2 cursor-pointer hover:text-[#1D4046]/60 transition-colors">
                         <MapPin className="w-3.5 h-3.5"/> Current City
                       </label>
                       <div className="relative">
                         <input
+                          id="transitCity"
                           value={transitPob}
                           onChange={e => { setTransitPob(e.target.value); setShowSuggestionsFor("transit"); }}
                           onKeyDown={handleKeyDown}
@@ -424,12 +426,12 @@ export default function Home() {
                       </div>
                     </div>
                     <div className="space-y-2">
-                      <label className="text-xs font-bold text-[#1D4046]/40 uppercase flex items-center gap-2"><Calendar className="w-3.5 h-3.5"/> Date</label>
-                      <input type="date" value={transitDateStr} onChange={e => setTransitDateStr(e.target.value)} className="w-full p-3 bg-[#F9F7F1] border border-[#1D4046]/10 rounded-xl outline-none" />
+                      <label htmlFor="transitDate" className="text-xs font-bold text-[#1D4046]/40 uppercase flex items-center gap-2 cursor-pointer hover:text-[#1D4046]/60 transition-colors"><Calendar className="w-3.5 h-3.5"/> Date</label>
+                      <input id="transitDate" type="date" value={transitDateStr} onChange={e => setTransitDateStr(e.target.value)} className="w-full p-3 bg-[#F9F7F1] border border-[#1D4046]/10 rounded-xl outline-none focus:ring-2 focus:ring-[#1D4046]/20 transition-all" />
                     </div>
                     <div className="space-y-2">
-                      <label className="text-xs font-bold text-[#1D4046]/40 uppercase flex items-center gap-2"><Clock className="w-3.5 h-3.5"/> Time</label>
-                      <input type="time" value={transitTimeStr} onChange={e => setTransitTimeStr(e.target.value)} className="w-full p-3 bg-[#F9F7F1] border border-[#1D4046]/10 rounded-xl outline-none" />
+                      <label htmlFor="transitTime" className="text-xs font-bold text-[#1D4046]/40 uppercase flex items-center gap-2 cursor-pointer hover:text-[#1D4046]/60 transition-colors"><Clock className="w-3.5 h-3.5"/> Time</label>
+                      <input id="transitTime" type="time" value={transitTimeStr} onChange={e => setTransitTimeStr(e.target.value)} className="w-full p-3 bg-[#F9F7F1] border border-[#1D4046]/10 rounded-xl outline-none focus:ring-2 focus:ring-[#1D4046]/20 transition-all" />
                     </div>
                   </div>
                 </div>
