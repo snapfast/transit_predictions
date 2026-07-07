@@ -3,6 +3,12 @@ import * as AstModule from 'astronomy-engine';
 // Workaround for ESM/CJS interop
 const Ast = (AstModule as unknown as { default: typeof AstModule }).default || AstModule;
 
+
+const TRANSIT_CACHE = new Map<string, {
+    planets: PlanetData[], d1: DivisionalChartData, d9: DivisionalChartData, d60: DivisionalChartData,
+    predictionsMoon: Predictions, predictionsLagna: Predictions, dasha?: DashaInfo, sadeSati?: SadeSatiInfo, gocharaScore: number, remedies: Remedy[], ashtakavarga?: AshtakavargaData
+}>();
+
 export interface PlanetData {
     name: string;
     symbol: string;
@@ -318,6 +324,17 @@ export function calculateTransits(date: Date, lat: number = 28.6139, lon: number
     planets: PlanetData[], d1: DivisionalChartData, d9: DivisionalChartData, d60: DivisionalChartData,
     predictionsMoon: Predictions, predictionsLagna: Predictions, dasha?: DashaInfo, sadeSati?: SadeSatiInfo, gocharaScore: number, remedies: Remedy[], ashtakavarga?: AshtakavargaData
 } {
+    // LRU Cache mechanism
+    const birthKey = birthDetails ? `${birthDetails.date.getTime()}_${birthDetails.lat}_${birthDetails.lon}` : 'none';
+    const cacheKey = `${date.getTime()}_${lat}_${lon}_${birthKey}_${ayanamsaType}_${refPlanet}`;
+
+    const cachedResult = TRANSIT_CACHE.get(cacheKey);
+    if (cachedResult) {
+        // Refresh position for LRU
+        TRANSIT_CACHE.delete(cacheKey);
+        TRANSIT_CACHE.set(cacheKey, cachedResult);
+        return cachedResult;
+    }
     const time = Ast.MakeTime(date), ayanamsa = getAyanamsa(time, ayanamsaType);
     const calcLagna = (t: AstModule.AstroTime) => {
         const RAMC = (Ast.SiderealTime(t) * 15 + lon) % 360, eps = Math.acos(Ast.Rotation_ECL_EQD(t).rot[2][2]);
@@ -429,7 +446,17 @@ export function calculateTransits(date: Date, lat: number = 28.6139, lon: number
     const ascIdx = RASIS.indexOf(planets.find(p => p.name === "Ascendant")?.rasi || "Aries");
     const planetsFromLagna = planets.map(p => ({ ...p, house: (RASIS.indexOf(p.rasi) - ascIdx + 12) % 12 + 1 }));
 
-    return { planets, d1, d9, d60, predictionsMoon: generatePredictions(planetsFromMoon, "Moon"), predictionsLagna: generatePredictions(planetsFromLagna, "Ascendant"), dasha, sadeSati, gocharaScore: calculateGocharaScore(planetsFromMoon, dasha, ashtakavarga), remedies: getRemedies(planetsFromMoon, dasha, sadeSati), ashtakavarga };
+    const result = { planets, d1, d9, d60, predictionsMoon: generatePredictions(planetsFromMoon, "Moon"), predictionsLagna: generatePredictions(planetsFromLagna, "Ascendant"), dasha, sadeSati, gocharaScore: calculateGocharaScore(planetsFromMoon, dasha, ashtakavarga), remedies: getRemedies(planetsFromMoon, dasha, sadeSati), ashtakavarga };
+
+    TRANSIT_CACHE.set(cacheKey, result);
+    if (TRANSIT_CACHE.size > 200) {
+        const firstKey = TRANSIT_CACHE.keys().next().value;
+        if (firstKey !== undefined) {
+            TRANSIT_CACHE.delete(firstKey);
+        }
+    }
+
+    return result;
 }
 
 function calculateAshtakavarga(natal: PlanetData[]): AshtakavargaData {
