@@ -111,20 +111,20 @@ export function getRemedies(planets: PlanetData[], dasha?: DashaInfo, sadeSati?:
     return remedies.filter((v, i, a) => a.findIndex(t => t.planet === v.planet && t.condition === v.condition) === i).slice(0, 6);
 }
 
-function getPlanetRemedy(planet: string, condition: string): Remedy {
-    const data: { [key: string]: { mantra: string, charity: string, lifestyle: string } } = {
-        "Sun": { mantra: "Om Ghrini Suryaya Namaha", charity: "Donate wheat or copper on Sundays", lifestyle: "Wake up before sunrise, offer water to Sun" },
-        "Moon": { mantra: "Om Som Somaya Namaha", charity: "Donate rice or white cloth on Mondays", lifestyle: "Respect mother, stay hydrated" },
-        "Mars": { mantra: "Om Ang Angarkaya Namaha", charity: "Donate red lentils on Tuesdays", lifestyle: "Physical exercise, avoid anger" },
-        "Mercury": { mantra: "Om Bum Budhaya Namaha", charity: "Donate green gram on Wednesdays", lifestyle: "Read books, plant trees" },
-        "Jupiter": { mantra: "Om Gram Greem Graum Sah Gurave Namaha", charity: "Donate yellow sweets or turmeric on Thursdays", lifestyle: "Respect teachers, study scriptures" },
-        "Venus": { mantra: "Om Shum Shukraya Namaha", charity: "Donate white sweets or silk on Fridays", lifestyle: "Maintain cleanliness, appreciate art" },
-        "Saturn": { mantra: "Om Sham Shanaishcharaya Namaha", charity: "Donate mustard oil or black clothes on Saturdays", lifestyle: "Hard work, punctuality" },
-        "Rahu": { mantra: "Om Raam Rahave Namaha", charity: "Donate coconuts or coal", lifestyle: "Bird feeding, avoid illusions" },
-        "Ketu": { mantra: "Om Kem Ketave Namaha", charity: "Donate multi-colored blankets", lifestyle: "Meditation, spiritual detachment" }
-    };
+const REMEDY_DATA: { [key: string]: { mantra: string, charity: string, lifestyle: string } } = {
+    "Sun": { mantra: "Om Ghrini Suryaya Namaha", charity: "Donate wheat or copper on Sundays", lifestyle: "Wake up before sunrise, offer water to Sun" },
+    "Moon": { mantra: "Om Som Somaya Namaha", charity: "Donate rice or white cloth on Mondays", lifestyle: "Respect mother, stay hydrated" },
+    "Mars": { mantra: "Om Ang Angarkaya Namaha", charity: "Donate red lentils on Tuesdays", lifestyle: "Physical exercise, avoid anger" },
+    "Mercury": { mantra: "Om Bum Budhaya Namaha", charity: "Donate green gram on Wednesdays", lifestyle: "Read books, plant trees" },
+    "Jupiter": { mantra: "Om Gram Greem Graum Sah Gurave Namaha", charity: "Donate yellow sweets or turmeric on Thursdays", lifestyle: "Respect teachers, study scriptures" },
+    "Venus": { mantra: "Om Shum Shukraya Namaha", charity: "Donate white sweets or silk on Fridays", lifestyle: "Maintain cleanliness, appreciate art" },
+    "Saturn": { mantra: "Om Sham Shanaishcharaya Namaha", charity: "Donate mustard oil or black clothes on Saturdays", lifestyle: "Hard work, punctuality" },
+    "Rahu": { mantra: "Om Raam Rahave Namaha", charity: "Donate coconuts or coal", lifestyle: "Bird feeding, avoid illusions" },
+    "Ketu": { mantra: "Om Kem Ketave Namaha", charity: "Donate multi-colored blankets", lifestyle: "Meditation, spiritual detachment" }
+};
 
-    const remedy = data[planet] || { mantra: "Om Namah Shivaya", charity: "General donation", lifestyle: "Meditate" };
+function getPlanetRemedy(planet: string, condition: string): Remedy {
+    const remedy = REMEDY_DATA[planet] || { mantra: "Om Namah Shivaya", charity: "General donation", lifestyle: "Meditate" };
     return { planet, condition, ...remedy };
 }
 
@@ -168,16 +168,17 @@ export function calculateGocharaScore(planets: PlanetData[], dasha?: DashaInfo, 
     return Math.min(Math.max(score, 0), 100);
 }
 
+const DASHA_LORDS = ["Ketu", "Venus", "Sun", "Moon", "Mars", "Rahu", "Jupiter", "Saturn", "Mercury"];
+const DASHA_PERIODS = [7, 20, 6, 10, 7, 18, 16, 19, 17];
+
 export function calculateVimshottariDasha(birthDate: Date, moonLongitude: number, targetDate: Date = new Date()): DashaInfo {
     const totalCycle = 120, nakshatraLength = 360 / 27;
-    const dashaLords = ["Ketu", "Venus", "Sun", "Moon", "Mars", "Rahu", "Jupiter", "Saturn", "Mercury"];
-    const dashaPeriods = [7, 20, 6, 10, 7, 18, 16, 19, 17];
 
     const nakshatraIndex = Math.floor(moonLongitude / nakshatraLength);
     const lordIndex = nakshatraIndex % 9;
     const passedInNakshatra = (moonLongitude % nakshatraLength) / nakshatraLength;
 
-    const firstDashaTotalYears = dashaPeriods[lordIndex];
+    const firstDashaTotalYears = DASHA_PERIODS[lordIndex];
     const firstDashaRemainingYears = firstDashaTotalYears * (1 - passedInNakshatra);
 
     let currentDate = new Date(birthDate);
@@ -189,19 +190,19 @@ export function calculateVimshottariDasha(birthDate: Date, moonLongitude: number
     while (dashaEnd < targetDate) {
         currentDate = new Date(dashaEnd);
         currentLordIndex = (currentLordIndex + 1) % 9;
-        const years = dashaPeriods[currentLordIndex];
+        const years = DASHA_PERIODS[currentLordIndex];
         dashaEnd = new Date(currentDate);
         dashaEnd.setFullYear(dashaEnd.getFullYear() + years);
     }
 
-    const currentMahadasha = { lord: dashaLords[currentLordIndex], start: new Date(currentDate), end: new Date(dashaEnd) };
+    const currentMahadasha = { lord: DASHA_LORDS[currentLordIndex], start: new Date(currentDate), end: new Date(dashaEnd) };
 
     const mdDurationMs = dashaEnd.getTime() - currentDate.getTime();
     let adStart = new Date(currentDate);
     for (let i = 0; i < 9; i++) {
         const adIdx = (currentLordIndex + i) % 9;
-        const adLord = dashaLords[adIdx];
-        const adDurationMs = (dashaPeriods[adIdx] / totalCycle) * mdDurationMs;
+        const adLord = DASHA_LORDS[adIdx];
+        const adDurationMs = (DASHA_PERIODS[adIdx] / totalCycle) * mdDurationMs;
         const adEnd = new Date(adStart.getTime() + adDurationMs);
         if (adEnd > targetDate) {
             const currentAD = { lord: adLord, start: adStart, end: adEnd };
@@ -209,8 +210,8 @@ export function calculateVimshottariDasha(birthDate: Date, moonLongitude: number
             let pdStart = new Date(adStart);
             for (let j = 0; j < 9; j++) {
                 const pdIdx = (adIdx + j) % 9;
-                const pdLord = dashaLords[pdIdx];
-                const pdDurationMs = (dashaPeriods[pdIdx] / totalCycle) * adDurationActual;
+                const pdLord = DASHA_LORDS[pdIdx];
+                const pdDurationMs = (DASHA_PERIODS[pdIdx] / totalCycle) * adDurationActual;
                 const pdEnd = new Date(pdStart.getTime() + pdDurationMs);
                 if (pdEnd > targetDate) {
                     return { mahadasha: currentMahadasha, antardasha: currentAD, pratyantardasha: { lord: pdLord, start: pdStart, end: pdEnd } };
@@ -221,7 +222,7 @@ export function calculateVimshottariDasha(birthDate: Date, moonLongitude: number
         }
         adStart = adEnd;
     }
-    const fallback = { lord: dashaLords[currentLordIndex], start: currentDate, end: dashaEnd };
+    const fallback = { lord: DASHA_LORDS[currentLordIndex], start: currentDate, end: dashaEnd };
     return { mahadasha: currentMahadasha, antardasha: fallback, pratyantardasha: fallback };
 }
 
@@ -459,31 +460,33 @@ export function calculateTransits(date: Date, lat: number = 28.6139, lon: number
     return result;
 }
 
+const ASHTAKAVARGA_RULES: { [key: string]: { [key: string]: number[] } } = {
+    "Sun": { "Sun": [1, 2, 4, 7, 8, 9, 10, 11], "Moon": [3, 6, 10, 11], "Mars": [1, 2, 4, 7, 8, 9, 10, 11], "Mercury": [3, 5, 6, 9, 10, 11, 12], "Jupiter": [5, 6, 9, 11], "Venus": [6, 7, 12], "Saturn": [1, 2, 4, 7, 8, 9, 10, 11], "Ascendant": [3, 4, 6, 10, 11, 12] },
+    "Moon": { "Sun": [3, 6, 7, 8, 10, 11], "Moon": [1, 3, 6, 7, 10, 11], "Mars": [2, 3, 5, 6, 9, 10, 11], "Mercury": [1, 3, 4, 5, 7, 8, 10, 11], "Jupiter": [1, 4, 7, 8, 10, 11, 12], "Venus": [3, 4, 5, 7, 9, 10, 11], "Saturn": [3, 5, 6, 11], "Ascendant": [3, 6, 10, 11] },
+    "Mars": { "Sun": [3, 5, 6, 10, 11], "Moon": [3, 6, 11], "Mars": [1, 2, 4, 7, 8, 10, 11], "Mercury": [3, 5, 6, 11], "Jupiter": [6, 10, 11, 12], "Venus": [6, 8, 11, 12], "Saturn": [1, 4, 7, 8, 9, 10, 11], "Ascendant": [1, 3, 6, 10, 11] },
+    "Mercury": { "Sun": [5, 6, 9, 11, 12], "Moon": [2, 4, 6, 8, 10, 11], "Mars": [1, 2, 4, 7, 8, 9, 10, 11], "Mercury": [1, 3, 5, 6, 9, 10, 11, 12], "Jupiter": [6, 8, 11, 12], "Venus": [1, 2, 3, 4, 5, 8, 9, 11], "Saturn": [1, 2, 4, 7, 8, 9, 10, 11], "Ascendant": [1, 2, 4, 6, 8, 10, 11] },
+    "Jupiter": { "Sun": [1, 2, 3, 4, 7, 8, 9, 10, 11], "Moon": [2, 5, 7, 9, 11], "Mars": [1, 2, 4, 7, 8, 10, 11], "Mercury": [1, 2, 4, 5, 6, 9, 10, 11], "Jupiter": [1, 2, 3, 4, 7, 8, 10, 11], "Venus": [2, 5, 6, 9, 10, 11], "Saturn": [3, 5, 6, 12], "Ascendant": [1, 2, 4, 5, 6, 7, 9, 10, 11] },
+    "Venus": { "Sun": [8, 11, 12], "Moon": [1, 2, 3, 4, 5, 8, 9, 11, 12], "Mars": [3, 5, 6, 9, 11, 12], "Mercury": [3, 5, 6, 9, 11], "Jupiter": [5, 8, 9, 10, 11], "Venus": [1, 2, 3, 4, 5, 8, 9, 10, 11], "Saturn": [3, 4, 5, 8, 9, 10, 11], "Ascendant": [1, 2, 3, 4, 5, 8, 9, 11] },
+    "Saturn": { "Sun": [1, 2, 4, 7, 8, 10, 11], "Moon": [3, 6, 11], "Mars": [3, 5, 6, 10, 11, 12], "Mercury": [6, 8, 9, 10, 11, 12], "Jupiter": [5, 6, 11, 12], "Venus": [6, 11, 12], "Saturn": [3, 5, 6, 11], "Ascendant": [1, 3, 4, 6, 10, 11] }
+};
+
 function calculateAshtakavarga(natal: PlanetData[]): AshtakavargaData {
     const bav: { [key: string]: number[] } = {}, sav = new Array(12).fill(0), main = ["Sun", "Moon", "Mars", "Mercury", "Jupiter", "Venus", "Saturn"];
     const rasis: { [key: string]: number } = {}; [...main, "Ascendant"].forEach(n => rasis[n] = Math.floor((natal.find(p => p.name === n)?.longitude || 0) / 30));
-    const rules: { [key: string]: { [key: string]: number[] } } = {
-        "Sun": { "Sun": [1, 2, 4, 7, 8, 9, 10, 11], "Moon": [3, 6, 10, 11], "Mars": [1, 2, 4, 7, 8, 9, 10, 11], "Mercury": [3, 5, 6, 9, 10, 11, 12], "Jupiter": [5, 6, 9, 11], "Venus": [6, 7, 12], "Saturn": [1, 2, 4, 7, 8, 9, 10, 11], "Ascendant": [3, 4, 6, 10, 11, 12] },
-        "Moon": { "Sun": [3, 6, 7, 8, 10, 11], "Moon": [1, 3, 6, 7, 10, 11], "Mars": [2, 3, 5, 6, 9, 10, 11], "Mercury": [1, 3, 4, 5, 7, 8, 10, 11], "Jupiter": [1, 4, 7, 8, 10, 11, 12], "Venus": [3, 4, 5, 7, 9, 10, 11], "Saturn": [3, 5, 6, 11], "Ascendant": [3, 6, 10, 11] },
-        "Mars": { "Sun": [3, 5, 6, 10, 11], "Moon": [3, 6, 11], "Mars": [1, 2, 4, 7, 8, 10, 11], "Mercury": [3, 5, 6, 11], "Jupiter": [6, 10, 11, 12], "Venus": [6, 8, 11, 12], "Saturn": [1, 4, 7, 8, 9, 10, 11], "Ascendant": [1, 3, 6, 10, 11] },
-        "Mercury": { "Sun": [5, 6, 9, 11, 12], "Moon": [2, 4, 6, 8, 10, 11], "Mars": [1, 2, 4, 7, 8, 9, 10, 11], "Mercury": [1, 3, 5, 6, 9, 10, 11, 12], "Jupiter": [6, 8, 11, 12], "Venus": [1, 2, 3, 4, 5, 8, 9, 11], "Saturn": [1, 2, 4, 7, 8, 9, 10, 11], "Ascendant": [1, 2, 4, 6, 8, 10, 11] },
-        "Jupiter": { "Sun": [1, 2, 3, 4, 7, 8, 9, 10, 11], "Moon": [2, 5, 7, 9, 11], "Mars": [1, 2, 4, 7, 8, 10, 11], "Mercury": [1, 2, 4, 5, 6, 9, 10, 11], "Jupiter": [1, 2, 3, 4, 7, 8, 10, 11], "Venus": [2, 5, 6, 9, 10, 11], "Saturn": [3, 5, 6, 12], "Ascendant": [1, 2, 4, 5, 6, 7, 9, 10, 11] },
-        "Venus": { "Sun": [8, 11, 12], "Moon": [1, 2, 3, 4, 5, 8, 9, 11, 12], "Mars": [3, 5, 6, 9, 11, 12], "Mercury": [3, 5, 6, 9, 11], "Jupiter": [5, 8, 9, 10, 11], "Venus": [1, 2, 3, 4, 5, 8, 9, 10, 11], "Saturn": [3, 4, 5, 8, 9, 10, 11], "Ascendant": [1, 2, 3, 4, 5, 8, 9, 11] },
-        "Saturn": { "Sun": [1, 2, 4, 7, 8, 10, 11], "Moon": [3, 6, 11], "Mars": [3, 5, 6, 10, 11, 12], "Mercury": [6, 8, 9, 10, 11, 12], "Jupiter": [5, 6, 11, 12], "Venus": [6, 11, 12], "Saturn": [3, 5, 6, 11], "Ascendant": [1, 3, 4, 6, 10, 11] }
-    };
     main.forEach(p => {
         const s = new Array(12).fill(0);
         for (let i = 0; i < 12; i++) {
-            [...main, "Ascendant"].forEach(src => { if (rules[p][src].includes((i - rasis[src] + 12) % 12 + 1)) { s[i]++; sav[i]++; } });
+            [...main, "Ascendant"].forEach(src => { if (ASHTAKAVARGA_RULES[p][src].includes((i - rasis[src] + 12) % 12 + 1)) { s[i]++; sav[i]++; } });
         }
         bav[p] = s;
     });
     return { bav, sav };
 }
 
+const VEDHA_PAIRS: { [key: string]: { [key: number]: number } } = { "Sun": { 3: 9, 6: 12, 10: 4, 11: 5, 9: 3, 12: 6, 4: 10, 5: 11 }, "Moon": { 1: 5, 3: 9, 6: 12, 7: 2, 10: 4, 11: 8, 5: 1, 9: 3, 12: 6, 2: 7, 4: 10, 8: 11 }, "Mars": { 3: 12, 6: 9, 11: 5, 12: 3, 9: 6, 5: 11 }, "Mercury": { 2: 5, 4: 3, 6: 9, 8: 1, 10: 7, 11: 12, 5: 2, 3: 4, 9: 6, 1: 8, 7: 10, 12: 11 }, "Jupiter": { 2: 12, 5: 4, 7: 3, 9: 10, 11: 8, 12: 2, 4: 5, 3: 7, 10: 9, 8: 11 }, "Venus": { 1: 8, 2: 7, 3: 1, 4: 10, 5: 9, 8: 1, 9: 5, 10: 4, 11: 3, 12: 6, 7: 2, 6: 12 }, "Saturn": { 3: 12, 6: 9, 11: 5, 12: 3, 9: 6, 5: 11 } };
+
 function checkVedha(p: PlanetData, all: PlanetData[]): { isObstructed: boolean, obstructingPlanet?: string } {
-    const pairs: { [key: string]: { [key: number]: number } } = { "Sun": { 3: 9, 6: 12, 10: 4, 11: 5, 9: 3, 12: 6, 4: 10, 5: 11 }, "Moon": { 1: 5, 3: 9, 6: 12, 7: 2, 10: 4, 11: 8, 5: 1, 9: 3, 12: 6, 2: 7, 4: 10, 8: 11 }, "Mars": { 3: 12, 6: 9, 11: 5, 12: 3, 9: 6, 5: 11 }, "Mercury": { 2: 5, 4: 3, 6: 9, 8: 1, 10: 7, 11: 12, 5: 2, 3: 4, 9: 6, 1: 8, 7: 10, 12: 11 }, "Jupiter": { 2: 12, 5: 4, 7: 3, 9: 10, 11: 8, 12: 2, 4: 5, 3: 7, 10: 9, 8: 11 }, "Venus": { 1: 8, 2: 7, 3: 1, 4: 10, 5: 9, 8: 1, 9: 5, 10: 4, 11: 3, 12: 6, 7: 2, 6: 12 }, "Saturn": { 3: 12, 6: 9, 11: 5, 12: 3, 9: 6, 5: 11 } };
-    const vH = pairs[p.name]?.[p.house]; if (!vH) return { isObstructed: false };
+    const vH = VEDHA_PAIRS[p.name]?.[p.house]; if (!vH) return { isObstructed: false };
     const obs = all.find(o => o.house === vH && o.name !== p.name && o.name !== "Ascendant");
     if (obs) {
         if ((p.name === "Sun" && obs.name === "Saturn") || (p.name === "Saturn" && obs.name === "Sun")) return { isObstructed: false };
