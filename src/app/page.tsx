@@ -446,10 +446,10 @@ export default function Home() {
               <h1 className="text-4xl font-serif text-[#1D4046] tracking-tight">Your Personal Energy Forecast</h1>
               <div className="flex flex-wrap gap-4">
                 <div className="flex bg-white rounded-lg border border-[#1D4046]/10 p-1 shadow-sm">
-                  {["Lahiri", "Raman", "Fagan-Bradley"].map(a => <button key={a} onClick={() => setAyanamsa(a as AyanamsaType)} className={`px-3 py-1 text-xs rounded-md transition-all ${ayanamsa === a ? 'bg-[#F59E0B] text-white font-bold' : 'text-[#1D4046]/60 hover:bg-[#F9F7F1]'}`}>{a}</button>)}
+                  {["Lahiri", "Raman", "Fagan-Bradley"].map(a => <button key={a} onClick={() => setAyanamsa(a as AyanamsaType)} className={`px-3 py-1 text-xs rounded-md transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F59E0B] ${ayanamsa === a ? 'bg-[#F59E0B] text-white font-bold' : 'text-[#1D4046]/60 hover:bg-[#F9F7F1]'}`}>{a}</button>)}
                 </div>
                 <div className="flex bg-white rounded-lg border border-[#1D4046]/10 p-1 shadow-sm">
-                  {["Moon", "Lagna", "Dasha Lord"].map(r => <button key={r} onClick={() => setReferencePoint(r as "Moon" | "Lagna" | "Dasha Lord")} className={`px-3 py-1 text-xs rounded-md transition-all ${referencePoint === r ? 'bg-[#1D4046] text-white font-bold' : 'text-[#1D4046]/60 hover:bg-[#F9F7F1]'}`}>{r}</button>)}
+                  {["Moon", "Lagna", "Dasha Lord"].map(r => <button key={r} onClick={() => setReferencePoint(r as "Moon" | "Lagna" | "Dasha Lord")} className={`px-3 py-1 text-xs rounded-md transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F59E0B] ${referencePoint === r ? 'bg-[#1D4046] text-white font-bold' : 'text-[#1D4046]/60 hover:bg-[#F9F7F1]'}`}>{r}</button>)}
                 </div>
               </div>
             </header>
@@ -511,7 +511,7 @@ export default function Home() {
               <h1 className="text-4xl font-serif text-[#1D4046] tracking-tight">Predictions</h1>
               <div className="flex flex-wrap gap-4">
                 <div className="flex bg-white rounded-lg border border-[#1D4046]/10 p-1 shadow-sm">
-                  {["Moon", "Lagna"].map(r => <button key={r} onClick={() => setPredictionReference(r as "Moon" | "Lagna")} className={`px-3 py-1 text-xs rounded-md transition-all ${predictionReference === r ? 'bg-[#1D4046] text-white font-bold' : 'text-[#1D4046]/60 hover:bg-[#F9F7F1]'}`}>From {r}</button>)}
+                  {["Moon", "Lagna"].map(r => <button key={r} onClick={() => setPredictionReference(r as "Moon" | "Lagna")} className={`px-3 py-1 text-xs rounded-md transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F59E0B] ${predictionReference === r ? 'bg-[#1D4046] text-white font-bold' : 'text-[#1D4046]/60 hover:bg-[#F9F7F1]'}`}>From {r}</button>)}
                 </div>
               </div>
             </header>
@@ -588,7 +588,7 @@ export default function Home() {
                         </div>
                         <div className="text-4xl font-serif text-[#F59E0B]">{gocharaScore.toFixed(1)}%</div>
                     </div>
-                    <input type="range" min="-30" max="30" value={scrubDays} onChange={e => setScrubDays(parseInt(e.target.value))} className="w-full h-1.5 bg-[#F9F7F1] rounded-lg appearance-none cursor-pointer accent-[#F59E0B]" />
+                    <input type="range" min="-30" max="30" value={scrubDays} onChange={e => setScrubDays(parseInt(e.target.value))} aria-label="Transit Timeline Scrubber" className="w-full h-1.5 bg-[#F9F7F1] rounded-lg appearance-none cursor-pointer accent-[#F59E0B] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F59E0B]" />
                     <div className="h-48 w-full bg-[#F9F7F1] rounded-2xl border border-[#1D4046]/5 p-4 relative overflow-hidden">
                         <svg className="w-full h-full" preserveAspectRatio="none" viewBox="0 0 100 100">
                             {timelineScores.length > 0 && (
@@ -638,7 +638,7 @@ export default function Home() {
                 <header className="flex flex-col md:flex-row justify-between items-center gap-4">
                     <h1 className="text-4xl font-serif text-[#1D4046]">Deep Jyotish View</h1>
                     <div className="flex bg-white rounded-lg border border-[#1D4046]/10 p-1 shadow-sm">
-                        {["North", "South"].map(s => <button key={s} onClick={() => setChartStyle(s as ChartStyle)} className={`px-4 py-1 text-xs rounded-md transition-all ${chartStyle === s ? 'bg-[#F59E0B] text-white font-bold' : 'text-[#1D4046]/60 hover:bg-[#F9F7F1]'}`}>{s} Indian</button>)}
+                        {["North", "South"].map(s => <button key={s} onClick={() => setChartStyle(s as ChartStyle)} className={`px-4 py-1 text-xs rounded-md transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F59E0B] ${chartStyle === s ? 'bg-[#F59E0B] text-white font-bold' : 'text-[#1D4046]/60 hover:bg-[#F9F7F1]'}`}>{s} Indian</button>)}
                     </div>
                 </header>
                 <div className="grid lg:grid-cols-2 gap-8">
