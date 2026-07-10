@@ -319,7 +319,7 @@ export default function Home() {
               </div>
               <button
                 onClick={() => setIsSettingsOpen(true)}
-                className="flex items-center gap-2 px-4 py-2 bg-[#1D4046] text-white rounded-full text-xs font-bold hover:bg-[#1D4046]/90 transition-all shadow-md"
+                className="flex items-center gap-2 px-4 py-2 bg-[#1D4046] text-white rounded-full text-xs font-bold hover:bg-[#1D4046]/90 transition-all shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-[#F9F7F1] focus-visible:ring-[#F59E0B]"
               >
                 <Edit2 className="w-3.5 h-3.5" /> Modify Details
               </button>
@@ -332,7 +332,7 @@ export default function Home() {
                 </h2>
                 <button
                   onClick={() => setIsSettingsOpen(false)}
-                  className="p-2 hover:bg-[#F9F7F1] rounded-full transition-colors"
+                  className="p-2 hover:bg-[#F9F7F1] rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F59E0B]"
                   aria-label="Collapse Settings"
                 >
                   <ChevronUp className="w-6 h-6" />
@@ -351,6 +351,12 @@ export default function Home() {
                       <div className="relative">
                         <input
                           id="birthCity"
+                          role="combobox"
+                          aria-expanded={showSuggestionsFor === "birth" && suggestions.length > 0}
+                          aria-haspopup="listbox"
+                          aria-autocomplete="list"
+                          aria-controls="birth-suggestions-listbox"
+                          aria-activedescendant={activeSuggestionIndex >= 0 && showSuggestionsFor === "birth" ? `birth-suggestion-${activeSuggestionIndex}` : undefined}
                           value={birthPob}
                           onChange={e => { setBirthPob(e.target.value); setShowSuggestionsFor("birth"); }}
                           onKeyDown={handleKeyDown}
@@ -362,13 +368,16 @@ export default function Home() {
 
                     {/* Birth Suggestions Dropdown */}
                     {showSuggestionsFor === "birth" && suggestions.length > 0 && (
-                      <div className="absolute z-50 w-full mt-1 bg-white border border-[#1D4046]/10 rounded-xl shadow-xl overflow-hidden max-h-60 overflow-y-auto shadow-[#1D4046]/20 top-full left-0">
+                      <div id="birth-suggestions-listbox" role="listbox" className="absolute z-50 w-full mt-1 bg-white border border-[#1D4046]/10 rounded-xl shadow-xl overflow-hidden max-h-60 overflow-y-auto shadow-[#1D4046]/20 top-full left-0">
                         {suggestions.map((s, i) => (
                           <button
                             key={i}
+                            id={`birth-suggestion-${i}`}
+                            role="option"
+                            aria-selected={i === activeSuggestionIndex}
                             onClick={() => handleSuggestionSelect(s)}
                             onMouseEnter={() => setActiveSuggestionIndex(i)}
-                            className={`w-full text-left px-4 py-3 text-sm border-b border-[#1D4046]/5 last:border-0 transition-colors ${i === activeSuggestionIndex ? 'bg-[#F59E0B]/10 text-[#F59E0B] font-bold' : 'text-[#1D4046]/80 hover:bg-[#F9F7F1]'}`}
+                            className={`w-full text-left px-4 py-3 text-sm border-b border-[#1D4046]/5 last:border-0 transition-colors focus-visible:outline-none focus-visible:bg-[#F59E0B]/10 ${i === activeSuggestionIndex ? 'bg-[#F59E0B]/10 text-[#F59E0B] font-bold' : 'text-[#1D4046]/80 hover:bg-[#F9F7F1]'}`}
                           >
                             {s.name}
                           </button>
@@ -399,6 +408,12 @@ export default function Home() {
                       <div className="relative">
                         <input
                           id="transitCity"
+                          role="combobox"
+                          aria-expanded={showSuggestionsFor === "transit" && suggestions.length > 0}
+                          aria-haspopup="listbox"
+                          aria-autocomplete="list"
+                          aria-controls="transit-suggestions-listbox"
+                          aria-activedescendant={activeSuggestionIndex >= 0 && showSuggestionsFor === "transit" ? `transit-suggestion-${activeSuggestionIndex}` : undefined}
                           value={transitPob}
                           onChange={e => { setTransitPob(e.target.value); setShowSuggestionsFor("transit"); }}
                           onKeyDown={handleKeyDown}
@@ -410,13 +425,16 @@ export default function Home() {
 
                     {/* Transit Suggestions Dropdown */}
                     {showSuggestionsFor === "transit" && suggestions.length > 0 && (
-                      <div className="absolute z-50 w-full mt-1 bg-white border border-[#1D4046]/10 rounded-xl shadow-xl overflow-hidden max-h-60 overflow-y-auto shadow-[#1D4046]/20 top-full left-0">
+                      <div id="transit-suggestions-listbox" role="listbox" className="absolute z-50 w-full mt-1 bg-white border border-[#1D4046]/10 rounded-xl shadow-xl overflow-hidden max-h-60 overflow-y-auto shadow-[#1D4046]/20 top-full left-0">
                         {suggestions.map((s, i) => (
                           <button
                             key={i}
+                            id={`transit-suggestion-${i}`}
+                            role="option"
+                            aria-selected={i === activeSuggestionIndex}
                             onClick={() => handleSuggestionSelect(s)}
                             onMouseEnter={() => setActiveSuggestionIndex(i)}
-                            className={`w-full text-left px-4 py-3 text-sm border-b border-[#1D4046]/5 last:border-0 transition-colors ${i === activeSuggestionIndex ? 'bg-[#F59E0B]/10 text-[#F59E0B] font-bold' : 'text-[#1D4046]/80 hover:bg-[#F9F7F1]'}`}
+                            className={`w-full text-left px-4 py-3 text-sm border-b border-[#1D4046]/5 last:border-0 transition-colors focus-visible:outline-none focus-visible:bg-[#F59E0B]/10 ${i === activeSuggestionIndex ? 'bg-[#F59E0B]/10 text-[#F59E0B] font-bold' : 'text-[#1D4046]/80 hover:bg-[#F9F7F1]'}`}
                           >
                             {s.name}
                           </button>
