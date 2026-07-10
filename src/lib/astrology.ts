@@ -128,21 +128,35 @@ function getPlanetRemedy(planet: string, condition: string): Remedy {
     return { planet, condition, ...remedy };
 }
 
+// ⚡ Bolt Optimization: Extracted inline arrays to bitmasks for fast evaluation
+const BENEFIC_HOUSES_MASK = (1 << 1) | (1 << 2) | (1 << 4) | (1 << 5) | (1 << 7) | (1 << 9) | (1 << 10) | (1 << 11);
+const MALEFIC_HOUSES_MASK = (1 << 3) | (1 << 6) | (1 << 11);
+const DASHA_LORD_HOUSES_MASK = (1 << 1) | (1 << 5) | (1 << 9) | (1 << 10) | (1 << 11);
+
 export function calculateGocharaScore(planets: PlanetData[], dasha?: DashaInfo, ashtakavarga?: AshtakavargaData): number {
+    // ⚡ Bolt Optimization: Switched to a single `for` loop, pre-computed bitmasks, and O(1) dict lookups.
+    // Avoids re-allocating arrays and arrow functions on every call, drastically improving timeline scrubber performance.
     let score = 50;
 
-    planets.forEach(p => {
-        if (p.name === "Ascendant") return;
+    let dashaLordHouse = -1;
+    const dashaLordName = dasha ? dasha.mahadasha.lord : null;
+
+    for (let i = 0; i < planets.length; i++) {
+        const p = planets[i];
+        const n = p.name;
+
+        if (n === dashaLordName) dashaLordHouse = p.house;
+        if (n === "Ascendant") continue;
 
         let planetScore = 0;
-        const isBenefic = ["Jupiter", "Venus", "Mercury", "Moon"].includes(p.name);
+        const isBenefic = n === "Jupiter" || n === "Venus" || n === "Mercury" || n === "Moon";
         const house = p.house;
 
         if (isBenefic) {
-            if ([1, 2, 4, 5, 7, 9, 10, 11].includes(house)) planetScore += 8;
+            if ((BENEFIC_HOUSES_MASK & (1 << house)) !== 0) planetScore += 8;
             else planetScore -= 4;
         } else {
-            if ([3, 6, 11].includes(house)) planetScore += 10;
+            if ((MALEFIC_HOUSES_MASK & (1 << house)) !== 0) planetScore += 10;
             else planetScore -= 6;
         }
 
@@ -150,23 +164,24 @@ export function calculateGocharaScore(planets: PlanetData[], dasha?: DashaInfo, 
             planetScore = planetScore > 0 ? planetScore * 0.2 : planetScore;
         }
 
-        if (ashtakavarga && ashtakavarga.bav[p.name]) {
-            const rasiIdx = RASIS.indexOf(p.rasi);
-            const bindus = ashtakavarga.bav[p.name][rasiIdx];
+        if (ashtakavarga && ashtakavarga.bav[n]) {
+            // RASI_INDEX_MAP is used here for O(1) lookup instead of RASIS.indexOf
+            const rasiIdx = RASI_INDEX_MAP[p.rasi] ?? RASIS.indexOf(p.rasi);
+            const bindus = ashtakavarga.bav[n][rasiIdx];
             if (bindus >= 5) planetScore += 5;
             else if (bindus <= 3) planetScore -= 5;
         }
 
         score += planetScore;
-    });
+    }
 
-    if (dasha) {
-        const dashaLord = planets.find(p => p.name === dasha.mahadasha.lord);
-        if (dashaLord && [1, 5, 9, 10, 11].includes(dashaLord.house)) score += 15;
+    if (dashaLordHouse !== -1 && ((DASHA_LORD_HOUSES_MASK & (1 << dashaLordHouse)) !== 0)) {
+        score += 15;
     }
 
     return Math.min(Math.max(score, 0), 100);
 }
+
 
 const DASHA_LORDS = ["Ketu", "Venus", "Sun", "Moon", "Mars", "Rahu", "Jupiter", "Saturn", "Mercury"];
 const DASHA_PERIODS = [7, 20, 6, 10, 7, 18, 16, 19, 17];
@@ -295,6 +310,7 @@ function getHouseTheme(house: number): string {
 
 const NAKSHATRAS = ["Ashwini", "Bharani", "Krittika", "Rohini", "Mrigashirsha", "Ardra", "Punarvasu", "Pushya", "Ashlesha", "Magha", "Purva Phalguni", "Uttara Phalguni", "Hasta", "Chitra", "Swati", "Vishakha", "Anuradha", "Jyeshtha", "Mula", "Purva Ashadha", "Uttara Ashadha", "Shravana", "Dhanishta", "Shatabhisha", "Purva Bhadrapada", "Uttara Bhadrapada", "Revati"];
 const RASIS = ["Aries", "Taurus", "Gemini", "Cancer", "Leo", "Virgo", "Libra", "Scorpio", "Sagittarius", "Capricorn", "Aquarius", "Pisces"];
+const RASI_INDEX_MAP: Record<string, number> = { "Aries": 0, "Taurus": 1, "Gemini": 2, "Cancer": 3, "Leo": 4, "Virgo": 5, "Libra": 6, "Scorpio": 7, "Sagittarius": 8, "Capricorn": 9, "Aquarius": 10, "Pisces": 11 };
 const PLANET_MAP = [
     { name: "Sun", body: Ast.Body.Sun, symbol: "Su" }, { name: "Moon", body: Ast.Body.Moon, symbol: "Mo" },
     { name: "Mars", body: Ast.Body.Mars, symbol: "Ma" }, { name: "Mercury", body: Ast.Body.Mercury, symbol: "Me" },
