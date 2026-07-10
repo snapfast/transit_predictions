@@ -470,28 +470,96 @@ const ASHTAKAVARGA_RULES: { [key: string]: { [key: string]: number[] } } = {
     "Saturn": { "Sun": [1, 2, 4, 7, 8, 10, 11], "Moon": [3, 6, 11], "Mars": [3, 5, 6, 10, 11, 12], "Mercury": [6, 8, 9, 10, 11, 12], "Jupiter": [5, 6, 11, 12], "Venus": [6, 11, 12], "Saturn": [3, 5, 6, 11], "Ascendant": [1, 3, 4, 6, 10, 11] }
 };
 
-function calculateAshtakavarga(natal: PlanetData[]): AshtakavargaData {
-    const bav: { [key: string]: number[] } = {}, sav = new Array(12).fill(0), main = ["Sun", "Moon", "Mars", "Mercury", "Jupiter", "Venus", "Saturn"];
-    const rasis: { [key: string]: number } = {}; [...main, "Ascendant"].forEach(n => rasis[n] = Math.floor((natal.find(p => p.name === n)?.longitude || 0) / 30));
-    main.forEach(p => {
-        const s = new Array(12).fill(0);
-        for (let i = 0; i < 12; i++) {
-            [...main, "Ascendant"].forEach(src => { if (ASHTAKAVARGA_RULES[p][src].includes((i - rasis[src] + 12) % 12 + 1)) { s[i]++; sav[i]++; } });
+const ASHTAKAVARGA_MAIN = ["Sun", "Moon", "Mars", "Mercury", "Jupiter", "Venus", "Saturn"];
+const ASHTAKAVARGA_SRC = ["Sun", "Moon", "Mars", "Mercury", "Jupiter", "Venus", "Saturn", "Ascendant"];
+
+const ASHTAKAVARGA_BITMAPS: Int32Array[] = [];
+for (let j = 0; j < ASHTAKAVARGA_MAIN.length; j++) {
+    const p = ASHTAKAVARGA_MAIN[j];
+    const srcArray = new Int32Array(8);
+    for (let k = 0; k < ASHTAKAVARGA_SRC.length; k++) {
+        const src = ASHTAKAVARGA_SRC[k];
+        let bitmap = 0;
+        for (const house of ASHTAKAVARGA_RULES[p][src]) {
+            bitmap |= (1 << (house - 1));
         }
-        bav[p] = s;
-    });
+        srcArray[k] = bitmap;
+    }
+    ASHTAKAVARGA_BITMAPS.push(srcArray);
+}
+
+function calculateAshtakavarga(natal: PlanetData[]): AshtakavargaData {
+    // ⚡ Bolt Optimization: Uses precomputed Int32Array bitmasks (ASHTAKAVARGA_BITMAPS) instead of dynamically looping over
+    // object hierarchies. Bitwise checks (`rule & (1 << offset)`) inside unrolled loops replace `Array.prototype.includes`.
+    // Avoids creating `new Array(12).fill(0)` in each inner loop execution, vastly reducing GC pressure in hot paths.
+    const sav = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+    let r0 = 0, r1 = 0, r2 = 0, r3 = 0, r4 = 0, r5 = 0, r6 = 0, r7 = 0;
+
+    const nLen = natal.length;
+    for (let j = 0; j < nLen; j++) {
+        const n = natal[j].name;
+        const rasi = Math.floor(natal[j].longitude / 30);
+        if (n === "Sun") r0 = rasi;
+        else if (n === "Moon") r1 = rasi;
+        else if (n === "Mars") r2 = rasi;
+        else if (n === "Mercury") r3 = rasi;
+        else if (n === "Jupiter") r4 = rasi;
+        else if (n === "Venus") r5 = rasi;
+        else if (n === "Saturn") r6 = rasi;
+        else if (n === "Ascendant") r7 = rasi;
+    }
+
+    const bav: { [key: string]: number[] } = {
+        Sun: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        Moon: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        Mars: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        Mercury: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        Jupiter: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        Venus: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        Saturn: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+    };
+
+    for (let j = 0; j < 7; j++) {
+        const s = bav[ASHTAKAVARGA_MAIN[j]];
+        const rulesForP = ASHTAKAVARGA_BITMAPS[j];
+        const rule0 = rulesForP[0], rule1 = rulesForP[1], rule2 = rulesForP[2], rule3 = rulesForP[3];
+        const rule4 = rulesForP[4], rule5 = rulesForP[5], rule6 = rulesForP[6], rule7 = rulesForP[7];
+
+        for (let i = 0; i < 12; i++) {
+            let score = 0;
+            if ((rule0 & (1 << ((i - r0 + 12) % 12))) !== 0) score++;
+            if ((rule1 & (1 << ((i - r1 + 12) % 12))) !== 0) score++;
+            if ((rule2 & (1 << ((i - r2 + 12) % 12))) !== 0) score++;
+            if ((rule3 & (1 << ((i - r3 + 12) % 12))) !== 0) score++;
+            if ((rule4 & (1 << ((i - r4 + 12) % 12))) !== 0) score++;
+            if ((rule5 & (1 << ((i - r5 + 12) % 12))) !== 0) score++;
+            if ((rule6 & (1 << ((i - r6 + 12) % 12))) !== 0) score++;
+            if ((rule7 & (1 << ((i - r7 + 12) % 12))) !== 0) score++;
+
+            s[i] = score;
+            sav[i] += score;
+        }
+    }
     return { bav, sav };
 }
 
 const VEDHA_PAIRS: { [key: string]: { [key: number]: number } } = { "Sun": { 3: 9, 6: 12, 10: 4, 11: 5, 9: 3, 12: 6, 4: 10, 5: 11 }, "Moon": { 1: 5, 3: 9, 6: 12, 7: 2, 10: 4, 11: 8, 5: 1, 9: 3, 12: 6, 2: 7, 4: 10, 8: 11 }, "Mars": { 3: 12, 6: 9, 11: 5, 12: 3, 9: 6, 5: 11 }, "Mercury": { 2: 5, 4: 3, 6: 9, 8: 1, 10: 7, 11: 12, 5: 2, 3: 4, 9: 6, 1: 8, 7: 10, 12: 11 }, "Jupiter": { 2: 12, 5: 4, 7: 3, 9: 10, 11: 8, 12: 2, 4: 5, 3: 7, 10: 9, 8: 11 }, "Venus": { 1: 8, 2: 7, 3: 1, 4: 10, 5: 9, 8: 1, 9: 5, 10: 4, 11: 3, 12: 6, 7: 2, 6: 12 }, "Saturn": { 3: 12, 6: 9, 11: 5, 12: 3, 9: 6, 5: 11 } };
 
 function checkVedha(p: PlanetData, all: PlanetData[]): { isObstructed: boolean, obstructingPlanet?: string } {
-    const vH = VEDHA_PAIRS[p.name]?.[p.house]; if (!vH) return { isObstructed: false };
-    const obs = all.find(o => o.house === vH && o.name !== p.name && o.name !== "Ascendant");
-    if (obs) {
-        if ((p.name === "Sun" && obs.name === "Saturn") || (p.name === "Saturn" && obs.name === "Sun")) return { isObstructed: false };
-        if ((p.name === "Moon" && obs.name === "Mercury") || (p.name === "Mercury" && obs.name === "Moon")) return { isObstructed: false };
-        return { isObstructed: true, obstructingPlanet: obs.name };
+    // ⚡ Bolt Optimization: Switched from `all.find(...)` to a standard `for` loop to prevent creating an arrow function
+    // closure each time this runs, reducing overhead and memory allocations.
+    const pName = p.name;
+    const vH = VEDHA_PAIRS[pName]?.[p.house];
+    if (!vH) return { isObstructed: false };
+
+    for (let i = 0; i < all.length; i++) {
+        const o = all[i];
+        if (o.house === vH && o.name !== pName && o.name !== "Ascendant") {
+            const oName = o.name;
+            if ((pName === "Sun" && oName === "Saturn") || (pName === "Saturn" && oName === "Sun")) return { isObstructed: false };
+            if ((pName === "Moon" && oName === "Mercury") || (pName === "Mercury" && oName === "Moon")) return { isObstructed: false };
+            return { isObstructed: true, obstructingPlanet: oName };
+        }
     }
     return { isObstructed: false };
 }
