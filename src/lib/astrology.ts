@@ -96,17 +96,23 @@ export function getRemedies(planets: PlanetData[], dasha?: DashaInfo, sadeSati?:
         remedies.push(getPlanetRemedy(dashaLord, "Active Mahadasha Lord"));
     }
 
-    planets.forEach(p => {
+    for (let i = 0; i < planets.length; i++) {
+        const p = planets[i];
+        const n = p.name;
         if (p.vedha?.isObstructed) {
-            remedies.push(getPlanetRemedy(p.name, `Obstructed ${p.name} Transit`));
+            remedies.push(getPlanetRemedy(n, `Obstructed ${n} Transit`));
         }
-        if (p.isRetrograde && ["Mars", "Saturn", "Rahu", "Ketu"].includes(p.name)) {
-            remedies.push(getPlanetRemedy(p.name, `Retrograde ${p.name}`));
+        const isMSRK = n === "Mars" || n === "Saturn" || n === "Rahu" || n === "Ketu";
+        if (p.isRetrograde && isMSRK) {
+            remedies.push(getPlanetRemedy(n, `Retrograde ${n}`));
         }
-        if (["Mars", "Saturn", "Rahu", "Ketu"].includes(p.name) && [1, 2, 4, 5, 7, 8, 9, 12].includes(p.house)) {
-            remedies.push(getPlanetRemedy(p.name, `${p.name} in House ${p.house}`));
+        if (isMSRK) {
+            const h = p.house;
+            if (h === 1 || h === 2 || h === 4 || h === 5 || h === 7 || h === 8 || h === 9 || h === 12) {
+                remedies.push(getPlanetRemedy(n, `${n} in House ${h}`));
+            }
         }
-    });
+    }
 
     return remedies.filter((v, i, a) => a.findIndex(t => t.planet === v.planet && t.condition === v.condition) === i).slice(0, 6);
 }
@@ -259,36 +265,39 @@ export function generatePredictions(planets: PlanetData[], refPlanetName: "Moon"
     const refPlanet = planets.find(p => p.name === refPlanetName);
     if (!refPlanet) return { placements, aspects, yogas };
 
-    const refRasiIdx = RASIS.indexOf(refPlanet.rasi);
-    const getHouseFromRef = (rasi: string) => (RASIS.indexOf(rasi) - refRasiIdx + 12) % 12 + 1;
+    const refRasiIdx = RASI_INDEX_MAP[refPlanet.rasi] ?? RASIS.indexOf(refPlanet.rasi);
+    const getHouseFromRef = (rasi: string) => ((RASI_INDEX_MAP[rasi] ?? RASIS.indexOf(rasi)) - refRasiIdx + 12) % 12 + 1;
 
-    planets.forEach(p => {
-        if (["Ascendant", "Gulika", "Mandi"].includes(p.name)) return;
+    for (let i = 0; i < planets.length; i++) {
+        const p = planets[i];
+        const n = p.name;
+        if (n === "Ascendant" || n === "Gulika" || n === "Mandi") continue;
         const h = getHouseFromRef(p.rasi);
         const status = p.vedha?.isObstructed ? ` (Obstructed by ${p.vedha.obstructingPlanet})` : "";
-        placements.push(`${p.name} in House ${h} from ${refPlanetName}: ${getHouseTheme(h)}${status}`);
+        placements.push(`${n} in House ${h} from ${refPlanetName}: ${getHouseTheme(h)}${status}`);
 
-        if (["Sun", "Moon", "Mercury", "Venus"].includes(p.name)) {
-            aspects.push(`${p.name} aspects House ${(h + 6) % 12 || 12} from ${refPlanetName}.`);
-        } else if (p.name === "Mars") {
+        // Bolt Optimization: Replace inline `.includes` with boolean checks
+        if (n === "Sun" || n === "Moon" || n === "Mercury" || n === "Venus") {
+            aspects.push(`${n} aspects House ${(h + 6) % 12 || 12} from ${refPlanetName}.`);
+        } else if (n === "Mars") {
             aspects.push(`Mars aspects Houses ${(h + 3) % 12 || 12}, ${(h + 6) % 12 || 12}, and ${(h + 7) % 12 || 12} from ${refPlanetName}.`);
-        } else if (["Jupiter", "Rahu", "Ketu"].includes(p.name)) {
-            aspects.push(`${p.name} aspects Houses ${(h + 4) % 12 || 12}, ${(h + 6) % 12 || 12}, and ${(h + 8) % 12 || 12} from ${refPlanetName}.`);
-        } else if (p.name === "Saturn") {
+        } else if (n === "Jupiter" || n === "Rahu" || n === "Ketu") {
+            aspects.push(`${n} aspects Houses ${(h + 4) % 12 || 12}, ${(h + 6) % 12 || 12}, and ${(h + 8) % 12 || 12} from ${refPlanetName}.`);
+        } else if (n === "Saturn") {
             aspects.push(`Saturn aspects Houses ${(h + 2) % 12 || 12}, ${(h + 6) % 12 || 12}, and ${(h + 9) % 12 || 12} from ${refPlanetName}.`);
         }
-    });
+    }
 
     const getP = (name: string) => planets.find(p => p.name === name);
     const jup = getP("Jupiter"), merc = getP("Mercury"), sun = getP("Sun"), ven = getP("Venus"), mars = getP("Mars");
 
-    if (jup && refPlanet && (RASIS.indexOf(jup.rasi) - RASIS.indexOf(refPlanet.rasi) + 12) % 3 === 0) {
+    if (jup && refPlanet && ((RASI_INDEX_MAP[jup.rasi] ?? RASIS.indexOf(jup.rasi)) - refRasiIdx + 12) % 3 === 0) {
         yogas.push(`Gaja Kesari Yoga: Jupiter is in a quadrant from ${refPlanetName}. Brings wealth, intelligence, and lasting fame.`);
     }
     if (sun && merc && sun.rasi === merc.rasi) {
         yogas.push("Budha Aditya Yoga: Sun and Mercury conjunction. Enhances success and intellect.");
     }
-    if (ven && refPlanet && (RASIS.indexOf(ven.rasi) - RASIS.indexOf(refPlanet.rasi) + 12) % 12 === 0) {
+    if (ven && refPlanet && ((RASI_INDEX_MAP[ven.rasi] ?? RASIS.indexOf(ven.rasi)) - refRasiIdx + 12) % 12 === 0) {
         yogas.push(`Malavya Yoga tendencies: Strong Venus influence on ${refPlanetName}. Artistic talents and comforts.`);
     }
     if (mars && jup && mars.rasi === jup.rasi) {
@@ -387,16 +396,18 @@ export function calculateTransits(date: Date, lat: number = 28.6139, lon: number
 
     const sun = raw.find(p => p.name === "Sun");
     if (sun) {
-        raw.forEach(p => {
-            if (["Mars", "Mercury", "Jupiter", "Venus", "Saturn"].includes(p.name)) {
+        for (let i = 0; i < raw.length; i++) {
+            const p = raw[i];
+            const n = p.name;
+            if (n === "Mars" || n === "Mercury" || n === "Jupiter" || n === "Venus" || n === "Saturn") {
                 let dist = Math.abs(p.longitude - sun.longitude);
                 if (dist > 180) dist = 360 - dist;
                 const limits: { [key: string]: number } = { "Mars": 17, "Mercury": 14, "Jupiter": 11, "Venus": 10, "Saturn": 15 };
-                if (p.name === "Mercury" && p.isRetrograde) limits["Mercury"] = 12;
-                if (p.name === "Venus" && p.isRetrograde) limits["Venus"] = 8;
-                p.isCombust = dist < (limits[p.name] || 0);
+                if (n === "Mercury" && p.isRetrograde) limits["Mercury"] = 12;
+                if (n === "Venus" && p.isRetrograde) limits["Venus"] = 8;
+                p.isCombust = dist < (limits[n] || 0);
             }
-        });
+        }
     }
 
     const rahuSid = (getMeanRahu(time) - ayanamsa + 360) % 360;
@@ -452,13 +463,16 @@ export function calculateTransits(date: Date, lat: number = 28.6139, lon: number
     }
     const moonIdx = RASIS.indexOf(planets.find(p => p.name === "Moon")?.rasi || "Aries");
     const planetsFromMoon = planets.map(p => ({ ...p, house: (RASIS.indexOf(p.rasi) - moonIdx + 12) % 12 + 1 }));
-    planetsFromMoon.forEach(p => {
-        if (["Sun", "Moon", "Mars", "Mercury", "Jupiter", "Venus", "Saturn"].includes(p.name)) {
+    for (let i = 0; i < planetsFromMoon.length; i++) {
+        const p = planetsFromMoon[i];
+        const n = p.name;
+        // Bolt Optimization: Replace inline `.includes` with boolean checks
+        if (n === "Sun" || n === "Moon" || n === "Mars" || n === "Mercury" || n === "Jupiter" || n === "Venus" || n === "Saturn") {
             p.vedha = checkVedha(p, planetsFromMoon);
-            const target = planets.find(tp => tp.name === p.name);
-            if (target) target.vedha = p.vedha;
+            // Bolt Optimization: Direct parallel index assignment instead of O(N) array .find
+            planets[i].vedha = p.vedha;
         }
-    });
+    }
 
     const ascIdx = RASIS.indexOf(planets.find(p => p.name === "Ascendant")?.rasi || "Aries");
     const planetsFromLagna = planets.map(p => ({ ...p, house: (RASIS.indexOf(p.rasi) - ascIdx + 12) % 12 + 1 }));

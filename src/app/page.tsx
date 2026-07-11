@@ -199,14 +199,17 @@ export default function Home() {
           scores.push(t.gocharaScore);
         }
 
-        t.planets.forEach(p => {
-          if (["Sun", "Moon", "Mars", "Mercury", "Jupiter", "Venus", "Saturn"].includes(p.name)) {
-            if (lastPositions[p.name] && lastPositions[p.name] !== p.rasi) {
-              events.push({ day: i - 30, label: `${p.name} enters ${p.rasi}` });
+        for (let j = 0; j < t.planets.length; j++) {
+          const p = t.planets[j];
+          const n = p.name;
+          // Bolt Optimization: Replace `.forEach` and `.includes` with standard `for` loop and boolean checks
+          if (n === "Sun" || n === "Moon" || n === "Mars" || n === "Mercury" || n === "Jupiter" || n === "Venus" || n === "Saturn") {
+            if (lastPositions[n] && lastPositions[n] !== p.rasi) {
+              events.push({ day: i - 30, label: `${n} enters ${p.rasi}` });
             }
-            lastPositions[p.name] = p.rasi;
+            lastPositions[n] = p.rasi;
           }
-        });
+        }
       }
 
       queueMicrotask(() => {
