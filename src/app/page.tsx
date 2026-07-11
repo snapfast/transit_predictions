@@ -295,7 +295,7 @@ export default function Home() {
         {/* Global Input Section (Collapsible) */}
         <section className="bg-white rounded-3xl shadow-sm border border-[#1D4046]/10 overflow-hidden transition-all duration-500 ease-in-out" ref={suggestionRef}>
           {!isSettingsOpen ? (
-            <div className="p-4 md:p-6 flex flex-col md:flex-row items-center justify-between gap-4 bg-gradient-to-r from-white to-[#F9F7F1]">
+            <div className="p-4 md:p-6 flex flex-col md:flex-row items-center justify-between gap-4 bg-gradient-to-r from-white to-[#F9F7F1] select-none">
               <div className="flex flex-wrap items-center gap-6 text-sm">
                 <div className="flex items-center gap-2">
                   <div className="w-8 h-8 rounded-full bg-[#F59E0B]/10 flex items-center justify-center">
@@ -319,20 +319,20 @@ export default function Home() {
               </div>
               <button
                 onClick={() => setIsSettingsOpen(true)}
-                className="flex items-center gap-2 px-4 py-2 bg-[#1D4046] text-white rounded-full text-xs font-bold hover:bg-[#1D4046]/90 transition-all shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-[#F9F7F1] focus-visible:ring-[#F59E0B]"
+                className="flex items-center gap-2 px-4 py-2 bg-[#1D4046] text-white rounded-full text-xs font-bold hover:bg-[#1D4046]/90 transition-all shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-[#F9F7F1] focus-visible:ring-[#F59E0B] select-none"
               >
                 <Edit2 className="w-3.5 h-3.5" /> Modify Details
               </button>
             </div>
           ) : (
             <div className="p-6">
-              <div className="flex justify-between items-center mb-8 pb-4 border-b border-[#1D4046]/5">
+              <div className="flex justify-between items-center mb-8 pb-4 border-b border-[#1D4046]/5 select-none">
                 <h2 className="text-2xl font-serif flex items-center gap-3">
                   <Settings className="w-6 h-6 text-[#F59E0B]" /> Configuration
                 </h2>
                 <button
                   onClick={() => setIsSettingsOpen(false)}
-                  className="p-2 hover:bg-[#F9F7F1] rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F59E0B]"
+                  className="p-2 hover:bg-[#F9F7F1] rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F59E0B] select-none"
                   aria-label="Collapse Settings"
                 >
                   <ChevronUp className="w-6 h-6" />
@@ -345,7 +345,7 @@ export default function Home() {
                   <h3 className="text-sm font-bold text-[#F59E0B] uppercase tracking-[0.2em]">Birth Details</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-2 col-span-1 md:col-span-2 relative">
-                      <label htmlFor="birthCity" className="text-xs font-bold text-[#1D4046]/40 uppercase flex items-center gap-2 cursor-pointer hover:text-[#1D4046]/60 transition-colors">
+                      <label htmlFor="birthCity" className="text-xs font-bold text-[#1D4046]/40 uppercase flex items-center gap-2 cursor-pointer hover:text-[#1D4046]/60 transition-colors select-none">
                         <MapPin className="w-3.5 h-3.5"/> City of Birth
                       </label>
                       <div className="relative">
@@ -368,7 +368,7 @@ export default function Home() {
 
                     {/* Birth Suggestions Dropdown */}
                     {showSuggestionsFor === "birth" && suggestions.length > 0 && (
-                      <div id="birth-suggestions-listbox" role="listbox" className="absolute z-50 w-full mt-1 bg-white border border-[#1D4046]/10 rounded-xl shadow-xl overflow-hidden max-h-60 overflow-y-auto shadow-[#1D4046]/20 top-full left-0">
+                      <div id="birth-suggestions-listbox" role="listbox" className="absolute z-50 w-full mt-1 bg-white border border-[#1D4046]/10 rounded-xl shadow-xl overflow-hidden max-h-60 overflow-y-auto shadow-[#1D4046]/20 top-full left-0 select-none">
                         {suggestions.map((s, i) => (
                           <button
                             key={i}
@@ -377,7 +377,7 @@ export default function Home() {
                             aria-selected={i === activeSuggestionIndex}
                             onClick={() => handleSuggestionSelect(s)}
                             onMouseEnter={() => setActiveSuggestionIndex(i)}
-                            className={`w-full text-left px-4 py-3 text-sm border-b border-[#1D4046]/5 last:border-0 transition-colors focus-visible:outline-none focus-visible:bg-[#F59E0B]/10 ${i === activeSuggestionIndex ? 'bg-[#F59E0B]/10 text-[#F59E0B] font-bold' : 'text-[#1D4046]/80 hover:bg-[#F9F7F1]'}`}
+                            className={`w-full text-left px-4 py-3 text-sm border-b border-[#1D4046]/5 last:border-0 transition-colors focus-visible:outline-none focus-visible:bg-[#F59E0B]/10 select-none ${i === activeSuggestionIndex ? 'bg-[#F59E0B]/10 text-[#F59E0B] font-bold' : 'text-[#1D4046]/80 hover:bg-[#F9F7F1]'}`}
                           >
                             {s.name}
                           </button>
@@ -387,22 +387,22 @@ export default function Home() {
                       </div>
                     </div>
                     <div className="space-y-2">
-                      <label htmlFor="birthDate" className="text-xs font-bold text-[#1D4046]/40 uppercase flex items-center gap-2 cursor-pointer hover:text-[#1D4046]/60 transition-colors"><Calendar className="w-3.5 h-3.5"/> Date</label>
+                      <label htmlFor="birthDate" className="text-xs font-bold text-[#1D4046]/40 uppercase flex items-center gap-2 cursor-pointer hover:text-[#1D4046]/60 transition-colors select-none"><Calendar className="w-3.5 h-3.5"/> Date</label>
                       <input id="birthDate" type="date" value={birthDateStr} onChange={e => setBirthDateStr(e.target.value)} className="w-full p-3 bg-[#F9F7F1] border border-[#1D4046]/10 rounded-xl outline-none focus:ring-2 focus:ring-[#F59E0B]/20 transition-all" />
                     </div>
                     <div className="space-y-2">
-                      <label htmlFor="birthTime" className="text-xs font-bold text-[#1D4046]/40 uppercase flex items-center gap-2 cursor-pointer hover:text-[#1D4046]/60 transition-colors"><Clock className="w-3.5 h-3.5"/> Time</label>
+                      <label htmlFor="birthTime" className="text-xs font-bold text-[#1D4046]/40 uppercase flex items-center gap-2 cursor-pointer hover:text-[#1D4046]/60 transition-colors select-none"><Clock className="w-3.5 h-3.5"/> Time</label>
                       <input id="birthTime" type="time" value={birthTimeStr} onChange={e => setBirthTimeStr(e.target.value)} className="w-full p-3 bg-[#F9F7F1] border border-[#1D4046]/10 rounded-xl outline-none focus:ring-2 focus:ring-[#F59E0B]/20 transition-all" />
                     </div>
                   </div>
                 </div>
 
                 {/* Transit Parameters Inputs */}
-                <div className="flex-1 space-y-6">
+                <div className="flex-1 space-y-6 select-none">
                    <h3 className="text-sm font-bold text-[#1D4046]/40 uppercase tracking-[0.2em]">Transit Parameters</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-2 col-span-1 md:col-span-2 relative">
-                      <label htmlFor="transitCity" className="text-xs font-bold text-[#1D4046]/40 uppercase flex items-center gap-2 cursor-pointer hover:text-[#1D4046]/60 transition-colors">
+                      <label htmlFor="transitCity" className="text-xs font-bold text-[#1D4046]/40 uppercase flex items-center gap-2 cursor-pointer hover:text-[#1D4046]/60 transition-colors select-none">
                         <MapPin className="w-3.5 h-3.5"/> Current City
                       </label>
                       <div className="relative">
@@ -425,7 +425,7 @@ export default function Home() {
 
                     {/* Transit Suggestions Dropdown */}
                     {showSuggestionsFor === "transit" && suggestions.length > 0 && (
-                      <div id="transit-suggestions-listbox" role="listbox" className="absolute z-50 w-full mt-1 bg-white border border-[#1D4046]/10 rounded-xl shadow-xl overflow-hidden max-h-60 overflow-y-auto shadow-[#1D4046]/20 top-full left-0">
+                      <div id="transit-suggestions-listbox" role="listbox" className="absolute z-50 w-full mt-1 bg-white border border-[#1D4046]/10 rounded-xl shadow-xl overflow-hidden max-h-60 overflow-y-auto shadow-[#1D4046]/20 top-full left-0 select-none">
                         {suggestions.map((s, i) => (
                           <button
                             key={i}
@@ -434,7 +434,7 @@ export default function Home() {
                             aria-selected={i === activeSuggestionIndex}
                             onClick={() => handleSuggestionSelect(s)}
                             onMouseEnter={() => setActiveSuggestionIndex(i)}
-                            className={`w-full text-left px-4 py-3 text-sm border-b border-[#1D4046]/5 last:border-0 transition-colors focus-visible:outline-none focus-visible:bg-[#F59E0B]/10 ${i === activeSuggestionIndex ? 'bg-[#F59E0B]/10 text-[#F59E0B] font-bold' : 'text-[#1D4046]/80 hover:bg-[#F9F7F1]'}`}
+                            className={`w-full text-left px-4 py-3 text-sm border-b border-[#1D4046]/5 last:border-0 transition-colors focus-visible:outline-none focus-visible:bg-[#F59E0B]/10 select-none ${i === activeSuggestionIndex ? 'bg-[#F59E0B]/10 text-[#F59E0B] font-bold' : 'text-[#1D4046]/80 hover:bg-[#F9F7F1]'}`}
                           >
                             {s.name}
                           </button>
@@ -444,11 +444,11 @@ export default function Home() {
                       </div>
                     </div>
                     <div className="space-y-2">
-                      <label htmlFor="transitDate" className="text-xs font-bold text-[#1D4046]/40 uppercase flex items-center gap-2 cursor-pointer hover:text-[#1D4046]/60 transition-colors"><Calendar className="w-3.5 h-3.5"/> Date</label>
+                      <label htmlFor="transitDate" className="text-xs font-bold text-[#1D4046]/40 uppercase flex items-center gap-2 cursor-pointer hover:text-[#1D4046]/60 transition-colors select-none"><Calendar className="w-3.5 h-3.5"/> Date</label>
                       <input id="transitDate" type="date" value={transitDateStr} onChange={e => setTransitDateStr(e.target.value)} className="w-full p-3 bg-[#F9F7F1] border border-[#1D4046]/10 rounded-xl outline-none focus:ring-2 focus:ring-[#1D4046]/20 transition-all" />
                     </div>
                     <div className="space-y-2">
-                      <label htmlFor="transitTime" className="text-xs font-bold text-[#1D4046]/40 uppercase flex items-center gap-2 cursor-pointer hover:text-[#1D4046]/60 transition-colors"><Clock className="w-3.5 h-3.5"/> Time</label>
+                      <label htmlFor="transitTime" className="text-xs font-bold text-[#1D4046]/40 uppercase flex items-center gap-2 cursor-pointer hover:text-[#1D4046]/60 transition-colors select-none"><Clock className="w-3.5 h-3.5"/> Time</label>
                       <input id="transitTime" type="time" value={transitTimeStr} onChange={e => setTransitTimeStr(e.target.value)} className="w-full p-3 bg-[#F9F7F1] border border-[#1D4046]/10 rounded-xl outline-none focus:ring-2 focus:ring-[#1D4046]/20 transition-all" />
                     </div>
                   </div>
@@ -460,8 +460,8 @@ export default function Home() {
 
         {activeTab === "dashboard" && (
           <div className="space-y-8 animate-in fade-in duration-500">
-            <header className="flex flex-col md:flex-row justify-between items-center gap-4">
-              <h1 className="text-4xl font-serif text-[#1D4046] tracking-tight">Your Personal Energy Forecast</h1>
+            <header className="flex flex-col md:flex-row justify-between items-center gap-4 select-none">
+              <h1 className="text-4xl font-serif text-[#1D4046] tracking-tight select-none">Your Personal Energy Forecast</h1>
               <div className="flex flex-wrap gap-4">
                 <div className="flex bg-white rounded-lg border border-[#1D4046]/10 p-1 shadow-sm">
                   {["Lahiri", "Raman", "Fagan-Bradley"].map(a => <button key={a} onClick={() => setAyanamsa(a as AyanamsaType)} className={`px-3 py-1 text-xs rounded-md transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F59E0B] ${ayanamsa === a ? 'bg-[#F59E0B] text-white font-bold' : 'text-[#1D4046]/60 hover:bg-[#F9F7F1]'}`}>{a}</button>)}
@@ -472,7 +472,7 @@ export default function Home() {
               </div>
             </header>
 
-            <section className="flex flex-col items-center justify-center p-12 bg-white rounded-[3rem] border border-[#1D4046]/10 shadow-xl relative overflow-hidden">
+            <section className="flex flex-col items-center justify-center p-12 bg-white rounded-[3rem] border border-[#1D4046]/10 shadow-xl relative overflow-hidden select-none">
                 {sadeSati?.isActive && (
                     <div className="absolute top-6 right-6 animate-pulse flex items-center gap-2 px-4 py-2 bg-red-50 text-red-600 rounded-full border border-red-100 shadow-sm">
                         <span className="w-2.5 h-2.5 bg-red-600 rounded-full" />
@@ -525,8 +525,8 @@ export default function Home() {
 
         {activeTab === "predictions" && (
           <div className="space-y-8 animate-in fade-in duration-500">
-            <header className="flex flex-col md:flex-row justify-between items-center gap-4">
-              <h1 className="text-4xl font-serif text-[#1D4046] tracking-tight">Predictions</h1>
+            <header className="flex flex-col md:flex-row justify-between items-center gap-4 select-none">
+              <h1 className="text-4xl font-serif text-[#1D4046] tracking-tight select-none">Predictions</h1>
               <div className="flex flex-wrap gap-4">
                 <div className="flex bg-white rounded-lg border border-[#1D4046]/10 p-1 shadow-sm">
                   {["Moon", "Lagna"].map(r => <button key={r} onClick={() => setPredictionReference(r as "Moon" | "Lagna")} className={`px-3 py-1 text-xs rounded-md transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F59E0B] ${predictionReference === r ? 'bg-[#1D4046] text-white font-bold' : 'text-[#1D4046]/60 hover:bg-[#F9F7F1]'}`}>From {r}</button>)}
@@ -535,7 +535,7 @@ export default function Home() {
             </header>
 
             <div className="space-y-6">
-              <h2 className="text-xs font-bold text-[#1D4046]/60 uppercase tracking-[0.3em] flex items-center gap-3">
+              <h2 className="text-xs font-bold text-[#1D4046]/60 uppercase tracking-[0.3em] flex items-center gap-3 select-none">
                 <div className="h-px w-8 bg-[#F59E0B]/40" /> Major Influences
               </h2>
               <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -556,7 +556,7 @@ export default function Home() {
             </div>
 
             <div className="space-y-6">
-              <h2 className="text-xs font-bold text-[#1D4046]/60 uppercase tracking-[0.3em] flex items-center gap-3">
+              <h2 className="text-xs font-bold text-[#1D4046]/60 uppercase tracking-[0.3em] flex items-center gap-3 select-none">
                 <div className="h-px w-8 bg-[#1D4046]/20" /> Supporting Transits
               </h2>
               <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 opacity-80">
@@ -578,7 +578,7 @@ export default function Home() {
 
             {(predictionReference === "Moon" ? predictionsMoon : predictionsLagna).yogas.length > 0 && (
                 <section className="bg-[#1D4046] p-8 rounded-3xl text-white shadow-lg">
-                    <h2 className="text-2xl font-serif mb-6 flex items-center gap-2"><Sparkles className="text-[#F59E0B]"/> Active Planetary Yogas</h2>
+                    <h2 className="text-2xl font-serif mb-6 flex items-center gap-2 select-none"><Sparkles className="text-[#F59E0B]"/> Active Planetary Yogas</h2>
                     <div className="grid md:grid-cols-2 gap-4">
                         {(predictionReference === "Moon" ? predictionsMoon : predictionsLagna).yogas.map((y, i) => {
                             const [title, desc] = y.split(': ');
@@ -597,8 +597,8 @@ export default function Home() {
 
         {activeTab === "timeline" && (
             <div className="space-y-8 animate-in fade-in duration-500">
-                <h1 className="text-4xl font-serif text-[#1D4046]">Sky Timeline</h1>
-                <section className="bg-white p-8 rounded-3xl border border-[#1D4046]/10 shadow-sm space-y-8">
+                <h1 className="text-4xl font-serif text-[#1D4046] select-none">Sky Timeline</h1>
+                <section className="bg-white p-8 rounded-3xl border border-[#1D4046]/10 shadow-sm space-y-8 select-none">
                     <div className="flex justify-between items-end">
                         <div>
                             <div className="text-xs font-bold text-[#1D4046]/40 uppercase tracking-widest mb-1">Interactive Scrubber</div>
@@ -653,7 +653,7 @@ export default function Home() {
 
         {activeTab === "charts" && (
             <div className="space-y-8 animate-in fade-in duration-500">
-                <header className="flex flex-col md:flex-row justify-between items-center gap-4">
+                <header className="flex flex-col md:flex-row justify-between items-center gap-4 select-none">
                     <h1 className="text-4xl font-serif text-[#1D4046]">Deep Jyotish View</h1>
                     <div className="flex bg-white rounded-lg border border-[#1D4046]/10 p-1 shadow-sm">
                         {["North", "South"].map(s => <button key={s} onClick={() => setChartStyle(s as ChartStyle)} className={`px-4 py-1 text-xs rounded-md transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F59E0B] ${chartStyle === s ? 'bg-[#F59E0B] text-white font-bold' : 'text-[#1D4046]/60 hover:bg-[#F9F7F1]'}`}>{s} Indian</button>)}
@@ -661,11 +661,11 @@ export default function Home() {
                 </header>
                 <div className="grid lg:grid-cols-2 gap-8">
                     <div className="bg-white p-6 rounded-3xl border border-[#1D4046]/10 shadow-sm">
-                        <h2 className="text-center font-serif text-lg mb-6 text-[#F59E0B]">Natal Chart (Birth)</h2>
+                        <h2 className="text-center font-serif text-lg mb-6 text-[#F59E0B] select-none">Natal Chart (Birth)</h2>
                         {natalChart ? <KundliChart data={natalChart} style={chartStyle} /> : <div className="h-64 bg-[#F9F7F1] rounded animate-pulse flex items-center justify-center text-xs opacity-40 italic">Set birth time to see natal chart...</div>}
                     </div>
                     <div className="bg-white p-6 rounded-3xl border border-[#1D4046]/10 shadow-sm ring-2 ring-[#F59E0B]/20">
-                        <h2 className="text-center font-serif text-lg mb-6 text-[#1D4046]">Transit Chart (Now)</h2>
+                        <h2 className="text-center font-serif text-lg mb-6 text-[#1D4046] select-none">Transit Chart (Now)</h2>
                         {chartData ? <KundliChart data={chartData} style={chartStyle} /> : <div className="h-64 bg-[#F9F7F1] rounded animate-pulse" />}
                     </div>
                 </div>
@@ -673,13 +673,13 @@ export default function Home() {
                 <div className="grid lg:grid-cols-2 gap-8">
                     {[{t: "D9 Navamsa", d: d9Data}, {t: "D60 Shashtiamsa", d: d60Data}].map((c, i) => (
                         <div key={i} className="bg-white p-6 rounded-3xl border border-[#1D4046]/10 shadow-sm">
-                            <h2 className="text-center font-serif text-lg mb-6">{c.t}</h2>
+                            <h2 className="text-center font-serif text-lg mb-6 select-none">{c.t}</h2>
                             {c.d ? <KundliChart data={c.d} style={chartStyle} /> : <div className="h-64 bg-[#F9F7F1] rounded animate-pulse" />}
                         </div>
                     ))}
                 </div>
                 <section className="bg-white p-8 rounded-3xl border border-[#1D4046]/10 shadow-sm">
-                    <h2 className="text-2xl font-serif mb-8 text-[#1D4046]">Detailed Planetary Positions (Transit)</h2>
+                    <h2 className="text-2xl font-serif mb-8 text-[#1D4046] select-none">Detailed Planetary Positions (Transit)</h2>
                     <div className="overflow-x-auto">
                         <table className="w-full text-left text-sm">
                             <thead className="border-b border-[#1D4046]/10">
@@ -718,7 +718,7 @@ export default function Home() {
 
                 {ashtakavarga && (
                     <section className="bg-white p-8 rounded-3xl border border-[#1D4046]/10 shadow-sm">
-                        <h2 className="text-2xl font-serif mb-8 text-[#1D4046]">Ashtakavarga Analysis (SAV)</h2>
+                        <h2 className="text-2xl font-serif mb-8 text-[#1D4046] select-none">Ashtakavarga Analysis (SAV)</h2>
                         <div className="grid grid-cols-4 md:grid-cols-6 lg:grid-cols-12 gap-3 mb-10">
                             {ashtakavarga.sav.map((s, i) => (
                                 <div key={i} className={`p-4 rounded-2xl border text-center transition-all ${s >= 28 ? 'bg-green-50 border-green-200' : s <= 25 ? 'bg-red-50 border-red-200' : 'bg-[#F9F7F1] border-[#1D4046]/10'}`}>
@@ -744,7 +744,7 @@ export default function Home() {
 
         {activeTab === "remedies" && (
             <div className="space-y-8 animate-in fade-in duration-500">
-                <h1 className="text-4xl font-serif text-[#1D4046]">Upayas & Dasha</h1>
+                <h1 className="text-4xl font-serif text-[#1D4046] select-none">Upayas & Dasha</h1>
                 {dasha && (
                     <section className="bg-white p-8 rounded-3xl border border-[#1D4046]/10 shadow-sm space-y-10">
                         {[
@@ -799,7 +799,7 @@ export default function Home() {
         )}
       </div>
 
-      <nav aria-label="Main Navigation" role="tablist" className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-[#1D4046]/90 backdrop-blur-md px-8 py-4 rounded-full flex gap-12 shadow-2xl items-center z-50 transition-all border border-white/10">
+      <nav aria-label="Main Navigation" role="tablist" className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-[#1D4046]/90 backdrop-blur-md px-8 py-4 rounded-full flex gap-12 shadow-2xl items-center z-50 transition-all border border-white/10 select-none">
         {[{id: "dashboard", icon: Sun, label: "Sky"}, {id: "predictions", icon: Sparkles, label: "Predict"}, {id: "timeline", icon: Moon, label: "Time"}, {id: "charts", icon: Info, label: "Deep"}, {id: "remedies", icon: User, label: "Upaya"}].map(tab => (
             <button
                 key={tab.id} role="tab" aria-selected={activeTab === tab.id}
