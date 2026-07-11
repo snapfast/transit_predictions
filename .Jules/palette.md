@@ -7,3 +7,6 @@
 ## 2024-07-10 - Custom Combobox Accessibility
 **Learning:** Custom auto-suggest dropdowns require complex ARIA patterns like role="combobox" and role="listbox" with aria-activedescendant to be usable by screen readers.
 **Action:** Always implement full WAI-ARIA combobox specs for custom searchable dropdowns, rather than relying on focus alone.
+## 2026-07-06 - [Accessible Toggle Buttons]
+**Learning:** Custom toggle buttons (acting as segmented controls) miss context when screen readers interpret them as simple buttons. Adding `role="group"` to the parent container with an `aria-label`, and `aria-pressed={true/false}` on individual options creates a proper accessible radio/toggle group without needing native `<input type="radio">` tags.
+**Action:** Whenever replacing native radios with stylized custom buttons, ensure the container has `role="group"` and `aria-label`, and the buttons have `aria-pressed` to communicate selection state.
