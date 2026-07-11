@@ -466,11 +466,11 @@ export default function Home() {
             <header className="flex flex-col md:flex-row justify-between items-center gap-4 select-none">
               <h1 className="text-4xl font-serif text-[#1D4046] tracking-tight select-none">Your Personal Energy Forecast</h1>
               <div className="flex flex-wrap gap-4">
-                <div className="flex bg-white rounded-lg border border-[#1D4046]/10 p-1 shadow-sm">
-                  {["Lahiri", "Raman", "Fagan-Bradley"].map(a => <button key={a} onClick={() => setAyanamsa(a as AyanamsaType)} className={`px-3 py-1 text-xs rounded-md transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F59E0B] ${ayanamsa === a ? 'bg-[#F59E0B] text-white font-bold' : 'text-[#1D4046]/60 hover:bg-[#F9F7F1]'}`}>{a}</button>)}
+                <div className="flex bg-white rounded-lg border border-[#1D4046]/10 p-1 shadow-sm" role="group" aria-label="Select Ayanamsa">
+                  {["Lahiri", "Raman", "Fagan-Bradley"].map(a => <button key={a} aria-pressed={ayanamsa === a} onClick={() => setAyanamsa(a as AyanamsaType)} className={`px-3 py-1 text-xs rounded-md transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F59E0B] ${ayanamsa === a ? 'bg-[#F59E0B] text-white font-bold' : 'text-[#1D4046]/60 hover:bg-[#F9F7F1]'}`}>{a}</button>)}
                 </div>
-                <div className="flex bg-white rounded-lg border border-[#1D4046]/10 p-1 shadow-sm">
-                  {["Moon", "Lagna", "Dasha Lord"].map(r => <button key={r} onClick={() => setReferencePoint(r as "Moon" | "Lagna" | "Dasha Lord")} className={`px-3 py-1 text-xs rounded-md transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F59E0B] ${referencePoint === r ? 'bg-[#1D4046] text-white font-bold' : 'text-[#1D4046]/60 hover:bg-[#F9F7F1]'}`}>{r}</button>)}
+                <div className="flex bg-white rounded-lg border border-[#1D4046]/10 p-1 shadow-sm" role="group" aria-label="Select Reference Point">
+                  {["Moon", "Lagna", "Dasha Lord"].map(r => <button key={r} aria-pressed={referencePoint === r} onClick={() => setReferencePoint(r as "Moon" | "Lagna" | "Dasha Lord")} className={`px-3 py-1 text-xs rounded-md transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F59E0B] ${referencePoint === r ? 'bg-[#1D4046] text-white font-bold' : 'text-[#1D4046]/60 hover:bg-[#F9F7F1]'}`}>{r}</button>)}
                 </div>
               </div>
             </header>
@@ -531,8 +531,8 @@ export default function Home() {
             <header className="flex flex-col md:flex-row justify-between items-center gap-4 select-none">
               <h1 className="text-4xl font-serif text-[#1D4046] tracking-tight select-none">Predictions</h1>
               <div className="flex flex-wrap gap-4">
-                <div className="flex bg-white rounded-lg border border-[#1D4046]/10 p-1 shadow-sm">
-                  {["Moon", "Lagna"].map(r => <button key={r} onClick={() => setPredictionReference(r as "Moon" | "Lagna")} className={`px-3 py-1 text-xs rounded-md transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F59E0B] ${predictionReference === r ? 'bg-[#1D4046] text-white font-bold' : 'text-[#1D4046]/60 hover:bg-[#F9F7F1]'}`}>From {r}</button>)}
+                <div className="flex bg-white rounded-lg border border-[#1D4046]/10 p-1 shadow-sm" role="group" aria-label="Select Prediction Reference">
+                  {["Moon", "Lagna"].map(r => <button key={r} aria-pressed={predictionReference === r} onClick={() => setPredictionReference(r as "Moon" | "Lagna")} className={`px-3 py-1 text-xs rounded-md transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F59E0B] ${predictionReference === r ? 'bg-[#1D4046] text-white font-bold' : 'text-[#1D4046]/60 hover:bg-[#F9F7F1]'}`}>From {r}</button>)}
                 </div>
               </div>
             </header>
@@ -658,8 +658,8 @@ export default function Home() {
             <div className="space-y-8 animate-in fade-in duration-500">
                 <header className="flex flex-col md:flex-row justify-between items-center gap-4 select-none">
                     <h1 className="text-4xl font-serif text-[#1D4046]">Deep Jyotish View</h1>
-                    <div className="flex bg-white rounded-lg border border-[#1D4046]/10 p-1 shadow-sm">
-                        {["North", "South"].map(s => <button key={s} onClick={() => setChartStyle(s as ChartStyle)} className={`px-4 py-1 text-xs rounded-md transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F59E0B] ${chartStyle === s ? 'bg-[#F59E0B] text-white font-bold' : 'text-[#1D4046]/60 hover:bg-[#F9F7F1]'}`}>{s} Indian</button>)}
+                    <div className="flex bg-white rounded-lg border border-[#1D4046]/10 p-1 shadow-sm" role="group" aria-label="Select Chart Style">
+                        {["North", "South"].map(s => <button key={s} aria-pressed={chartStyle === s} onClick={() => setChartStyle(s as ChartStyle)} className={`px-4 py-1 text-xs rounded-md transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F59E0B] ${chartStyle === s ? 'bg-[#F59E0B] text-white font-bold' : 'text-[#1D4046]/60 hover:bg-[#F9F7F1]'}`}>{s} Indian</button>)}
                     </div>
                 </header>
                 <div className="grid lg:grid-cols-2 gap-8">
