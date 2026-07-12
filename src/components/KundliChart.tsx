@@ -20,7 +20,7 @@ const KundliChartComponent: FC<KundliChartProps> = ({ data, style = 'North' }) =
 
   if (style === 'South') {
     return (
-        <svg viewBox="0 0 400 400" className="w-full aspect-square max-w-[500px] mx-auto relative p-4 bg-[#F9F7F1] rounded-lg shadow-sm border border-[#1D4046]/20 select-none">
+        <svg role="img" aria-label="South Indian Style Astrological Chart" viewBox="0 0 400 400" className="w-full aspect-square max-w-[500px] mx-auto relative p-4 bg-[#F9F7F1] rounded-lg shadow-sm border border-[#1D4046]/20 select-none">
             <rect x="0" y="0" width="400" height="400" fill="none" stroke="#1D4046" strokeWidth="1.5" />
             <line x1="100" y1="0" x2="100" y2="400" stroke="#1D4046" strokeWidth="1" strokeOpacity="0.3" />
             <line x1="200" y1="0" x2="200" y2="400" stroke="#1D4046" strokeWidth="1" strokeOpacity="0.3" />
@@ -50,7 +50,7 @@ const KundliChartComponent: FC<KundliChartProps> = ({ data, style = 'North' }) =
   }
 
   return (
-    <svg viewBox="0 0 400 400" className="w-full aspect-square max-w-[500px] mx-auto relative p-4 bg-[#F9F7F1] rounded-lg shadow-sm border border-[#1D4046]/20 select-none">
+    <svg role="img" aria-label="North Indian Style Astrological Chart" viewBox="0 0 400 400" className="w-full aspect-square max-w-[500px] mx-auto relative p-4 bg-[#F9F7F1] rounded-lg shadow-sm border border-[#1D4046]/20 select-none">
       <rect x="0" y="0" width="400" height="400" fill="none" stroke="#1D4046" strokeWidth="1.5" />
       <line x1="0" y1="0" x2="400" y2="400" stroke="#1D4046" strokeWidth="1" strokeOpacity="0.5" />
       <line x1="400" y1="0" x2="0" y2="400" stroke="#1D4046" strokeWidth="1" strokeOpacity="0.5" />
