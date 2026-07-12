@@ -371,13 +371,15 @@ export function calculateTransits(date: Date, lat: number = 28.6139, lon: number
     const lagnaSid = calcLagna(time), lagnaIdx = Math.floor(lagnaSid / 30);
     const raw: Array<{ name: string, symbol: string, longitude: number, degree: string, rasiIdx: number, isRetrograde: boolean, isCombust?: boolean, kakshya?: string, pada: number }> = [], timeDelta = time.AddDays(0.1);
 
-    PLANET_MAP.forEach(p => {
+    // Bolt Optimization: Replace `.forEach` with standard `for` loop to prevent closure creation per iteration
+    const kakshyaLords = ["Saturn", "Jupiter", "Mars", "Sun", "Venus", "Mercury", "Moon", "Lagna"];
+    for (let i = 0; i < PLANET_MAP.length; i++) {
+        const p = PLANET_MAP[i];
         const pos = Ast.GeoVector(p.body, time, true), ecl = Ast.Ecliptic(pos), sidereal = (ecl.elon - ayanamsa + 360) % 360;
         const posDelta = Ast.GeoVector(p.body, timeDelta, true), eclDelta = Ast.Ecliptic(posDelta);
         let diff = eclDelta.elon - ecl.elon; if (diff > 180) diff -= 360; if (diff < -180) diff += 360;
 
         const rasiDeg = sidereal % 30;
-        const kakshyaLords = ["Saturn", "Jupiter", "Mars", "Sun", "Venus", "Mercury", "Moon", "Lagna"];
         const kakshyaIdx = Math.floor(rasiDeg / 3.75);
         const nakshatraDeg = 360 / 27;
         const pada = Math.floor((sidereal % nakshatraDeg) / (nakshatraDeg / 4)) + 1;
@@ -392,7 +394,7 @@ export function calculateTransits(date: Date, lat: number = 28.6139, lon: number
             kakshya: kakshyaLords[kakshyaIdx],
             pada
         });
-    });
+    }
 
     const sun = raw.find(p => p.name === "Sun");
     if (sun) {
@@ -434,21 +436,35 @@ export function calculateTransits(date: Date, lat: number = 28.6139, lon: number
         isRetrograde: false,
         kakshya: ["Saturn", "Jupiter", "Mars", "Sun", "Venus", "Mercury", "Moon", "Lagna"][Math.floor(lagnaRasiDeg / 3.75)]
     }];
-    raw.forEach(p => planets.push({ ...p, rasi: RASIS[p.rasiIdx], house: (p.rasiIdx - refRasi + 12) % 12 + 1, nakshatra: NAKSHATRAS[Math.floor(p.longitude / (360 / 27))] }));
+    // Bolt Optimization: Replace `.forEach` with standard `for` loop
+    for (let i = 0; i < raw.length; i++) {
+        const p = raw[i];
+        planets.push({ ...p, rasi: RASIS[p.rasiIdx], house: (p.rasiIdx - refRasi + 12) % 12 + 1, nakshatra: NAKSHATRAS[Math.floor(p.longitude / (360 / 27))] });
+    }
 
     const d1: DivisionalChartData = { houses: {}, houseRasis: {} }, d9: DivisionalChartData = { houses: {}, houseRasis: {} }, d60: DivisionalChartData = { houses: {}, houseRasis: {} };
-    const mLong = raw.find(p => p.name === "Moon")?.longitude || lagnaSid;
+
+    // Bolt Optimization: Replace `.find` with standard `for` loop
+    let mLong = lagnaSid;
+    for (let i = 0; i < raw.length; i++) {
+        if (raw[i].name === "Moon") {
+            mLong = raw[i].longitude;
+            break;
+        }
+    }
     const refD9 = getD9Rasi(refPlanet === "Moon" ? mLong : lagnaSid), refD60 = getD60Rasi(refPlanet === "Moon" ? mLong : lagnaSid);
     for (let i = 1; i <= 12; i++) {
         d1.houses[i] = []; d1.houseRasis[i] = (refRasi + i - 1) % 12 + 1;
         d9.houses[i] = []; d9.houseRasis[i] = (refD9 + i - 1) % 12 + 1;
         d60.houses[i] = []; d60.houseRasis[i] = (refD60 + i - 1) % 12 + 1;
     }
-    planets.forEach(p => {
+    // Bolt Optimization: Replace `.forEach` with standard `for` loop
+    for (let i = 0; i < planets.length; i++) {
+        const p = planets[i];
         if (p.house >= 1 && p.house <= 12) d1.houses[p.house].push({ symbol: p.symbol, isRetrograde: p.isRetrograde });
         const h9 = (getD9Rasi(p.longitude) - refD9 + 12) % 12 + 1; if (h9 >= 1 && h9 <= 12) d9.houses[h9].push({ symbol: p.symbol, isRetrograde: p.isRetrograde });
         const h60 = (getD60Rasi(p.longitude) - refD60 + 12) % 12 + 1; if (h60 >= 1 && h60 <= 12) d60.houses[h60].push({ symbol: p.symbol, isRetrograde: p.isRetrograde });
-    });
+    }
 
     let dasha, sadeSati, ashtakavarga;
     if (birthDetails) {
@@ -461,7 +477,15 @@ export function calculateTransits(date: Date, lat: number = 28.6139, lon: number
         }
         ashtakavarga = calculateAshtakavarga(b.planets);
     }
-    const moonIdx = RASIS.indexOf(planets.find(p => p.name === "Moon")?.rasi || "Aries");
+    // Bolt Optimization: Replace `.find` with standard `for` loop
+    let moonRasi = "Aries";
+    for (let i = 0; i < planets.length; i++) {
+        if (planets[i].name === "Moon") {
+            moonRasi = planets[i].rasi;
+            break;
+        }
+    }
+    const moonIdx = RASIS.indexOf(moonRasi);
     const planetsFromMoon = planets.map(p => ({ ...p, house: (RASIS.indexOf(p.rasi) - moonIdx + 12) % 12 + 1 }));
     for (let i = 0; i < planetsFromMoon.length; i++) {
         const p = planetsFromMoon[i];
@@ -474,7 +498,15 @@ export function calculateTransits(date: Date, lat: number = 28.6139, lon: number
         }
     }
 
-    const ascIdx = RASIS.indexOf(planets.find(p => p.name === "Ascendant")?.rasi || "Aries");
+    // Bolt Optimization: Replace `.find` with standard `for` loop
+    let ascRasi = "Aries";
+    for (let i = 0; i < planets.length; i++) {
+        if (planets[i].name === "Ascendant") {
+            ascRasi = planets[i].rasi;
+            break;
+        }
+    }
+    const ascIdx = RASIS.indexOf(ascRasi);
     const planetsFromLagna = planets.map(p => ({ ...p, house: (RASIS.indexOf(p.rasi) - ascIdx + 12) % 12 + 1 }));
 
     const result = { planets, d1, d9, d60, predictionsMoon: generatePredictions(planetsFromMoon, "Moon"), predictionsLagna: generatePredictions(planetsFromLagna, "Ascendant"), dasha, sadeSati, gocharaScore: calculateGocharaScore(planetsFromMoon, dasha, ashtakavarga), remedies: getRemedies(planetsFromMoon, dasha, sadeSati), ashtakavarga };
