@@ -367,7 +367,7 @@ export default function Home() {
                           className="w-full p-3 bg-[#F9F7F1] border border-[#1D4046]/10 rounded-xl outline-none focus:ring-2 focus:ring-[#F59E0B]/20 transition-all"
                           placeholder="Search birth city..."
                         />
-                        {isLoadingCity && showSuggestionsFor === "birth" && <div className="absolute right-3 top-3.5 animate-spin w-4 h-4 border-2 border-[#F59E0B] border-t-transparent rounded-full" />}
+                        {isLoadingCity && showSuggestionsFor === "birth" && <div role="status" aria-label="Loading cities..." className="absolute right-3 top-3.5 animate-spin w-4 h-4 border-2 border-[#F59E0B] border-t-transparent rounded-full" />}
 
                     {/* Birth Suggestions Dropdown */}
                     {showSuggestionsFor === "birth" && suggestions.length > 0 && (
@@ -424,7 +424,7 @@ export default function Home() {
                           className="w-full p-3 bg-[#F9F7F1] border border-[#1D4046]/10 rounded-xl outline-none focus:ring-2 focus:ring-[#1D4046]/20 transition-all"
                           placeholder="Search transit city..."
                         />
-                        {isLoadingCity && showSuggestionsFor === "transit" && <div className="absolute right-3 top-3.5 animate-spin w-4 h-4 border-2 border-[#F59E0B] border-t-transparent rounded-full" />}
+                        {isLoadingCity && showSuggestionsFor === "transit" && <div role="status" aria-label="Loading cities..." className="absolute right-3 top-3.5 animate-spin w-4 h-4 border-2 border-[#F59E0B] border-t-transparent rounded-full" />}
 
                     {/* Transit Suggestions Dropdown */}
                     {showSuggestionsFor === "transit" && suggestions.length > 0 && (
@@ -494,7 +494,7 @@ export default function Home() {
                 </div>
 
                 <div className="relative w-64 h-64 flex items-center justify-center">
-                    <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
+                    <svg role="img" aria-label="Transit Score Radial Graph" className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
                         <circle cx="50" cy="50" r="45" fill="none" stroke="#F9F7F1" strokeWidth="10" />
                         <circle cx="50" cy="50" r="45" fill="none" stroke="#F59E0B" strokeWidth="10" strokeDasharray="283" strokeDashoffset={283 - (283 * gocharaScore) / 100} className="transition-all duration-1000 ease-out" strokeLinecap="round" />
                     </svg>
@@ -611,7 +611,7 @@ export default function Home() {
                     </div>
                     <input type="range" min="-30" max="30" value={scrubDays} onChange={e => setScrubDays(parseInt(e.target.value))} aria-label="Transit Timeline Scrubber" className="w-full h-1.5 bg-[#F9F7F1] rounded-lg appearance-none cursor-pointer accent-[#F59E0B] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F59E0B]" />
                     <div className="h-48 w-full bg-[#F9F7F1] rounded-2xl border border-[#1D4046]/5 p-4 relative overflow-hidden">
-                        <svg className="w-full h-full" preserveAspectRatio="none" viewBox="0 0 100 100">
+                        <svg role="img" aria-label="Interactive timeline showing transit score over 60 days" className="w-full h-full" preserveAspectRatio="none" viewBox="0 0 100 100">
                             {timelineScores.length > 0 && (
                               <path d={`M ${timelineScores.map((s, i) => `${(i / (timelineScores.length - 1)) * 100},${100 - s}`).join(' L ')}`} fill="none" stroke="#F59E0B" strokeWidth="3" strokeLinecap="round" />
                             )}

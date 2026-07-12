@@ -10,3 +10,6 @@
 ## 2026-07-06 - [Accessible Toggle Buttons]
 **Learning:** Custom toggle buttons (acting as segmented controls) miss context when screen readers interpret them as simple buttons. Adding `role="group"` to the parent container with an `aria-label`, and `aria-pressed={true/false}` on individual options creates a proper accessible radio/toggle group without needing native `<input type="radio">` tags.
 **Action:** Whenever replacing native radios with stylized custom buttons, ensure the container has `role="group"` and `aria-label`, and the buttons have `aria-pressed` to communicate selection state.
+## 2024-07-12 - [SVG Chart Accessibility]
+**Learning:** Complex custom SVG charts in this application (like the Kundli charts and timeline graphs) must explicitly declare `role="img"` and `aria-label`. Without these attributes, screen readers may either ignore them or read out confusing raw text coordinates and elements.
+**Action:** Always add `role="img"` and descriptive `aria-label` attributes to informative `<svg>` elements, especially those rendering charts or graphs.
