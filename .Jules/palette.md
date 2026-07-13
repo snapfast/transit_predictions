@@ -13,3 +13,6 @@
 ## 2024-07-12 - [SVG Chart Accessibility]
 **Learning:** Complex custom SVG charts in this application (like the Kundli charts and timeline graphs) must explicitly declare `role="img"` and `aria-label`. Without these attributes, screen readers may either ignore them or read out confusing raw text coordinates and elements.
 **Action:** Always add `role="img"` and descriptive `aria-label` attributes to informative `<svg>` elements, especially those rendering charts or graphs.
+## 2024-07-13 - [Combobox Option Focus and Keyboard Interception]
+**Learning:** For custom combobox options (like the city suggestions dropdowns), using interactive elements like `<button>` inside a `role="listbox"` can disrupt the tab navigation flow. Screen readers expect focus to remain on the input field while traversing options using `aria-activedescendant`. Adding `tabIndex={-1}` and `type="button"` ensures these options do not intercept focus during regular navigation. Also, screen readers benefit from `aria-busy` to announce dynamically loading data.
+**Action:** When implementing custom comboboxes, always set `tabIndex={-1}` on suggestion items when managing focus via the input (`aria-activedescendant`), and utilize `aria-busy` for loading states to provide a smoother and compliant keyboard/screen reader experience.
