@@ -360,6 +360,7 @@ export default function Home() {
                           aria-autocomplete="list"
                           aria-controls="birth-suggestions-listbox"
                           aria-activedescendant={activeSuggestionIndex >= 0 && showSuggestionsFor === "birth" ? `birth-suggestion-${activeSuggestionIndex}` : undefined}
+                          aria-busy={isLoadingCity && showSuggestionsFor === "birth"}
                           value={birthPob}
                           onChange={e => { setBirthPob(e.target.value); setShowSuggestionsFor("birth"); }}
                           onKeyDown={handleKeyDown}
@@ -375,6 +376,8 @@ export default function Home() {
                         {suggestions.map((s, i) => (
                           <button
                             key={i}
+                            type="button"
+                            tabIndex={-1}
                             id={`birth-suggestion-${i}`}
                             role="option"
                             aria-selected={i === activeSuggestionIndex}
@@ -417,6 +420,7 @@ export default function Home() {
                           aria-autocomplete="list"
                           aria-controls="transit-suggestions-listbox"
                           aria-activedescendant={activeSuggestionIndex >= 0 && showSuggestionsFor === "transit" ? `transit-suggestion-${activeSuggestionIndex}` : undefined}
+                          aria-busy={isLoadingCity && showSuggestionsFor === "transit"}
                           value={transitPob}
                           onChange={e => { setTransitPob(e.target.value); setShowSuggestionsFor("transit"); }}
                           onKeyDown={handleKeyDown}
@@ -432,6 +436,8 @@ export default function Home() {
                         {suggestions.map((s, i) => (
                           <button
                             key={i}
+                            type="button"
+                            tabIndex={-1}
                             id={`transit-suggestion-${i}`}
                             role="option"
                             aria-selected={i === activeSuggestionIndex}
@@ -609,7 +615,7 @@ export default function Home() {
                         </div>
                         <div className="text-4xl font-serif text-[#F59E0B]">{gocharaScore.toFixed(1)}%</div>
                     </div>
-                    <input type="range" min="-30" max="30" value={scrubDays} onChange={e => setScrubDays(parseInt(e.target.value))} aria-label="Transit Timeline Scrubber" className="w-full h-1.5 bg-[#F9F7F1] rounded-lg appearance-none cursor-pointer accent-[#F59E0B] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F59E0B]" />
+                    <input type="range" min="-30" max="30" value={scrubDays} onChange={e => setScrubDays(parseInt(e.target.value))} aria-label="Transit Timeline Scrubber" aria-valuetext={scrubDays === 0 ? "Current Date" : `${Math.abs(scrubDays)} days ${scrubDays > 0 ? 'forward' : 'back'}`} className="w-full h-1.5 bg-[#F9F7F1] rounded-lg appearance-none cursor-pointer accent-[#F59E0B] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F59E0B]" />
                     <div className="h-48 w-full bg-[#F9F7F1] rounded-2xl border border-[#1D4046]/5 p-4 relative overflow-hidden">
                         <svg role="img" aria-label="Interactive timeline showing transit score over 60 days" className="w-full h-full" preserveAspectRatio="none" viewBox="0 0 100 100">
                             {timelineScores.length > 0 && (
