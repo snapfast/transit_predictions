@@ -307,14 +307,15 @@ export function generatePredictions(planets: PlanetData[], refPlanetName: "Moon"
     return { placements, aspects, yogas };
 }
 
+const HOUSE_THEMES: { [key: number]: string } = {
+    1: "Self and vitality.", 2: "Wealth and family.", 3: "Courage and communication.",
+    4: "Home and peace.", 5: "Creativity and children.", 6: "Health and routines.",
+    7: "Relationships and public.", 8: "Transformation and resources.", 9: "Wisdom and travel.",
+    10: "Career and reputation.", 11: "Gains and social life.", 12: "Spirituality and expenses."
+};
+
 function getHouseTheme(house: number): string {
-    const themes: { [key: number]: string } = {
-        1: "Self and vitality.", 2: "Wealth and family.", 3: "Courage and communication.",
-        4: "Home and peace.", 5: "Creativity and children.", 6: "Health and routines.",
-        7: "Relationships and public.", 8: "Transformation and resources.", 9: "Wisdom and travel.",
-        10: "Career and reputation.", 11: "Gains and social life.", 12: "Spirituality and expenses."
-    };
-    return themes[house] || "General influences.";
+    return HOUSE_THEMES[house] || "General influences.";
 }
 
 const NAKSHATRAS = ["Ashwini", "Bharani", "Krittika", "Rohini", "Mrigashirsha", "Ardra", "Punarvasu", "Pushya", "Ashlesha", "Magha", "Purva Phalguni", "Uttara Phalguni", "Hasta", "Chitra", "Swati", "Vishakha", "Anuradha", "Jyeshtha", "Mula", "Purva Ashadha", "Uttara Ashadha", "Shravana", "Dhanishta", "Shatabhisha", "Purva Bhadrapada", "Uttara Bhadrapada", "Revati"];
@@ -344,6 +345,8 @@ export function getMeanRahu(time: AstModule.AstroTime): number {
     return n;
 }
 
+const KAKSHYA_LORDS = ["Saturn", "Jupiter", "Mars", "Sun", "Venus", "Mercury", "Moon", "Lagna"];
+
 const formatDegree = (deg: number) => `${Math.floor(deg)}° ${Math.floor((deg % 1) * 60)}'`;
 
 export function calculateTransits(date: Date, lat: number = 28.6139, lon: number = 77.2090, birthDetails?: { date: Date, lat: number, lon: number }, ayanamsaType: AyanamsaType = 'Lahiri', refPlanet: string = "Ascendant"): {
@@ -372,7 +375,6 @@ export function calculateTransits(date: Date, lat: number = 28.6139, lon: number
     const raw: Array<{ name: string, symbol: string, longitude: number, degree: string, rasiIdx: number, isRetrograde: boolean, isCombust?: boolean, kakshya?: string, pada: number }> = [], timeDelta = time.AddDays(0.1);
 
     // Bolt Optimization: Replace `.forEach` with standard `for` loop to prevent closure creation per iteration
-    const kakshyaLords = ["Saturn", "Jupiter", "Mars", "Sun", "Venus", "Mercury", "Moon", "Lagna"];
     for (let i = 0; i < PLANET_MAP.length; i++) {
         const p = PLANET_MAP[i];
         const pos = Ast.GeoVector(p.body, time, true), ecl = Ast.Ecliptic(pos), sidereal = (ecl.elon - ayanamsa + 360) % 360;
@@ -391,7 +393,7 @@ export function calculateTransits(date: Date, lat: number = 28.6139, lon: number
             degree: formatDegree(rasiDeg),
             rasiIdx: Math.floor(sidereal / 30),
             isRetrograde: (p.name !== "Sun" && p.name !== "Moon" && diff < 0),
-            kakshya: kakshyaLords[kakshyaIdx],
+            kakshya: KAKSHYA_LORDS[kakshyaIdx],
             pada
         });
     }
@@ -404,10 +406,13 @@ export function calculateTransits(date: Date, lat: number = 28.6139, lon: number
             if (n === "Mars" || n === "Mercury" || n === "Jupiter" || n === "Venus" || n === "Saturn") {
                 let dist = Math.abs(p.longitude - sun.longitude);
                 if (dist > 180) dist = 360 - dist;
-                const limits: { [key: string]: number } = { "Mars": 17, "Mercury": 14, "Jupiter": 11, "Venus": 10, "Saturn": 15 };
-                if (n === "Mercury" && p.isRetrograde) limits["Mercury"] = 12;
-                if (n === "Venus" && p.isRetrograde) limits["Venus"] = 8;
-                p.isCombust = dist < (limits[n] || 0);
+                let limit = 0;
+                if (n === "Mars") limit = 17;
+                else if (n === "Mercury") limit = p.isRetrograde ? 12 : 14;
+                else if (n === "Jupiter") limit = 11;
+                else if (n === "Venus") limit = p.isRetrograde ? 8 : 10;
+                else if (n === "Saturn") limit = 15;
+                p.isCombust = dist < limit;
             }
         }
     }
@@ -416,8 +421,8 @@ export function calculateTransits(date: Date, lat: number = 28.6139, lon: number
     const rRasiDeg = rahuSid % 30;
     const kRasiDeg = (rahuSid + 180) % 360 % 30;
     const nDeg = 360/27;
-    raw.push({ name: "Rahu", symbol: "Ra", longitude: rahuSid, degree: formatDegree(rRasiDeg), rasiIdx: Math.floor(rahuSid / 30), isRetrograde: true, kakshya: ["Saturn", "Jupiter", "Mars", "Sun", "Venus", "Mercury", "Moon", "Lagna"][Math.floor(rRasiDeg / 3.75)], pada: Math.floor((rahuSid % nDeg) / (nDeg / 4)) + 1 });
-    raw.push({ name: "Ketu", symbol: "Ke", longitude: (rahuSid + 180) % 360, degree: formatDegree(kRasiDeg), rasiIdx: Math.floor(((rahuSid + 180) % 360) / 30), isRetrograde: true, kakshya: ["Saturn", "Jupiter", "Mars", "Sun", "Venus", "Mercury", "Moon", "Lagna"][Math.floor(kRasiDeg / 3.75)], pada: Math.floor(((rahuSid + 180) % 360 % nDeg) / (nDeg / 4)) + 1 });
+    raw.push({ name: "Rahu", symbol: "Ra", longitude: rahuSid, degree: formatDegree(rRasiDeg), rasiIdx: Math.floor(rahuSid / 30), isRetrograde: true, kakshya: KAKSHYA_LORDS[Math.floor(rRasiDeg / 3.75)], pada: Math.floor((rahuSid % nDeg) / (nDeg / 4)) + 1 });
+    raw.push({ name: "Ketu", symbol: "Ke", longitude: (rahuSid + 180) % 360, degree: formatDegree(kRasiDeg), rasiIdx: Math.floor(((rahuSid + 180) % 360) / 30), isRetrograde: true, kakshya: KAKSHYA_LORDS[Math.floor(kRasiDeg / 3.75)], pada: Math.floor(((rahuSid + 180) % 360 % nDeg) / (nDeg / 4)) + 1 });
 
     let refRasi = lagnaIdx;
     if (refPlanet === "Moon") { const m = raw.find(p => p.name === "Moon"); if (m) refRasi = m.rasiIdx; }
@@ -434,7 +439,7 @@ export function calculateTransits(date: Date, lat: number = 28.6139, lon: number
         nakshatra: NAKSHATRAS[Math.floor(lagnaSid / (360 / 27))],
         pada: Math.floor((lagnaSid % (360/27)) / ((360/27) / 4)) + 1,
         isRetrograde: false,
-        kakshya: ["Saturn", "Jupiter", "Mars", "Sun", "Venus", "Mercury", "Moon", "Lagna"][Math.floor(lagnaRasiDeg / 3.75)]
+        kakshya: KAKSHYA_LORDS[Math.floor(lagnaRasiDeg / 3.75)]
     }];
     // Bolt Optimization: Replace `.forEach` with standard `for` loop
     for (let i = 0; i < raw.length; i++) {
@@ -485,8 +490,8 @@ export function calculateTransits(date: Date, lat: number = 28.6139, lon: number
             break;
         }
     }
-    const moonIdx = RASIS.indexOf(moonRasi);
-    const planetsFromMoon = planets.map(p => ({ ...p, house: (RASIS.indexOf(p.rasi) - moonIdx + 12) % 12 + 1 }));
+    const moonIdx = RASI_INDEX_MAP[moonRasi] ?? RASIS.indexOf(moonRasi);
+    const planetsFromMoon = planets.map(p => ({ ...p, house: ((RASI_INDEX_MAP[p.rasi] ?? RASIS.indexOf(p.rasi)) - moonIdx + 12) % 12 + 1 }));
     for (let i = 0; i < planetsFromMoon.length; i++) {
         const p = planetsFromMoon[i];
         const n = p.name;
@@ -506,8 +511,8 @@ export function calculateTransits(date: Date, lat: number = 28.6139, lon: number
             break;
         }
     }
-    const ascIdx = RASIS.indexOf(ascRasi);
-    const planetsFromLagna = planets.map(p => ({ ...p, house: (RASIS.indexOf(p.rasi) - ascIdx + 12) % 12 + 1 }));
+    const ascIdx = RASI_INDEX_MAP[ascRasi] ?? RASIS.indexOf(ascRasi);
+    const planetsFromLagna = planets.map(p => ({ ...p, house: ((RASI_INDEX_MAP[p.rasi] ?? RASIS.indexOf(p.rasi)) - ascIdx + 12) % 12 + 1 }));
 
     const result = { planets, d1, d9, d60, predictionsMoon: generatePredictions(planetsFromMoon, "Moon"), predictionsLagna: generatePredictions(planetsFromLagna, "Ascendant"), dasha, sadeSati, gocharaScore: calculateGocharaScore(planetsFromMoon, dasha, ashtakavarga), remedies: getRemedies(planetsFromMoon, dasha, sadeSati), ashtakavarga };
 
