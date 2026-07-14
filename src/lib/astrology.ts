@@ -114,7 +114,21 @@ export function getRemedies(planets: PlanetData[], dasha?: DashaInfo, sadeSati?:
         }
     }
 
-    return remedies.filter((v, i, a) => a.findIndex(t => t.planet === v.planet && t.condition === v.condition) === i).slice(0, 6);
+    // ⚡ Bolt Optimization: Replace O(N^2) Array.filter(Array.findIndex) with an O(N) Set-based filter
+    // to prevent heavy closure and array recreations in hot paths.
+    const uniqueRemedies: Remedy[] = [];
+    const seen = new Set<string>();
+    for (let i = 0; i < remedies.length; i++) {
+        const r = remedies[i];
+        const key = r.planet + "|" + r.condition;
+        if (!seen.has(key)) {
+            seen.add(key);
+            uniqueRemedies.push(r);
+            if (uniqueRemedies.length === 6) break;
+        }
+    }
+
+    return uniqueRemedies;
 }
 
 const REMEDY_DATA: { [key: string]: { mantra: string, charity: string, lifestyle: string } } = {
