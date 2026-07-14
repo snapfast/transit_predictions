@@ -16,3 +16,6 @@
 ## 2024-07-13 - [Combobox Option Focus and Keyboard Interception]
 **Learning:** For custom combobox options (like the city suggestions dropdowns), using interactive elements like `<button>` inside a `role="listbox"` can disrupt the tab navigation flow. Screen readers expect focus to remain on the input field while traversing options using `aria-activedescendant`. Adding `tabIndex={-1}` and `type="button"` ensures these options do not intercept focus during regular navigation. Also, screen readers benefit from `aria-busy` to announce dynamically loading data.
 **Action:** When implementing custom comboboxes, always set `tabIndex={-1}` on suggestion items when managing focus via the input (`aria-activedescendant`), and utilize `aria-busy` for loading states to provide a smoother and compliant keyboard/screen reader experience.
+## 2024-07-14 - [Range Slider Reset UX]
+**Learning:** For interactive range sliders with a definitive "default" or "zero" state (like scrubbing days from the current date), forcing users to manually drag the handle exactly back to zero can be frustrating and imprecise. Providing a clear, single-click "Reset" button improves usability significantly.
+**Action:** When implementing range sliders (`<input type="range">`) that adjust offsets from a baseline, always provide a supplementary button to reset the value back to the baseline.

@@ -610,7 +610,18 @@ export default function Home() {
                 <section className="bg-white p-8 rounded-3xl border border-[#1D4046]/10 shadow-sm space-y-8 select-none">
                     <div className="flex justify-between items-end">
                         <div>
-                            <div className="text-xs font-bold text-[#1D4046]/40 uppercase tracking-widest mb-1">Interactive Scrubber</div>
+                            <div className="text-xs font-bold text-[#1D4046]/40 uppercase tracking-widest mb-1 flex items-center gap-2">
+                                Interactive Scrubber
+                                {scrubDays !== 0 && (
+                                    <button
+                                        onClick={() => setScrubDays(0)}
+                                        aria-label="Reset to current date"
+                                        className="bg-[#F59E0B]/10 text-[#F59E0B] px-2 py-0.5 rounded text-[10px] font-bold hover:bg-[#F59E0B]/20 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F59E0B]"
+                                    >
+                                        Reset
+                                    </button>
+                                )}
+                            </div>
                             <div className="text-2xl font-serif">{scrubDays === 0 ? 'Transit Date' : `${Math.abs(scrubDays)} days ${scrubDays > 0 ? 'forward' : 'back'}`}</div>
                         </div>
                         <div className="text-4xl font-serif text-[#F59E0B]">{gocharaScore.toFixed(1)}%</div>
