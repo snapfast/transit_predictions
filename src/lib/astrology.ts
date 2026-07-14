@@ -5,9 +5,173 @@ const Ast = (AstModule as unknown as { default: typeof AstModule }).default || A
 
 
 const TRANSIT_CACHE = new Map<string, {
-    planets: PlanetData[], d1: DivisionalChartData, d9: DivisionalChartData, d60: DivisionalChartData,
-    predictionsMoon: Predictions, predictionsLagna: Predictions, dasha?: DashaInfo, sadeSati?: SadeSatiInfo, gocharaScore: number, remedies: Remedy[], ashtakavarga?: AshtakavargaData
+    planets: PlanetData[],
+    upgrahas?: PlanetData[],
+    d1: DivisionalChartData,
+    d9: DivisionalChartData,
+    d60: DivisionalChartData,
+    d1WithUpgrahas?: DivisionalChartData,
+    d9WithUpgrahas?: DivisionalChartData,
+    d60WithUpgrahas?: DivisionalChartData,
+    predictionsMoon: Predictions,
+    predictionsLagna: Predictions,
+    dasha?: DashaInfo,
+    sadeSati?: SadeSatiInfo,
+    gocharaScore: number,
+    remedies: Remedy[],
+    ashtakavarga?: AshtakavargaData
 }>();
+
+function getVedicDayBounds(date: Date, lat: number, lon: number): { isDay: boolean; start: Date; end: Date; weekday: number } {
+    const obs = new Ast.Observer(lat, lon, 0);
+
+    const dayStart = new Date(date);
+    dayStart.setHours(0, 0, 0, 0);
+
+    const riseTimeCurr = Ast.SearchRiseSet(Ast.Body.Sun, obs, 1, dayStart, 1);
+    const setTimeCurr = Ast.SearchRiseSet(Ast.Body.Sun, obs, -1, dayStart, 1);
+
+    const sunriseCurr = riseTimeCurr ? riseTimeCurr.date : new Date(dayStart.getTime() + 6 * 3600 * 1000);
+    const sunsetCurr = setTimeCurr ? setTimeCurr.date : new Date(dayStart.getTime() + 18 * 3600 * 1000);
+
+    let isDay = false;
+    let start = sunriseCurr;
+    let end = sunsetCurr;
+    let refDateForWeekday = date;
+
+    if (date >= sunriseCurr && date < sunsetCurr) {
+        isDay = true;
+        start = sunriseCurr;
+        end = sunsetCurr;
+        refDateForWeekday = date;
+    } else {
+        isDay = false;
+        if (date < sunriseCurr) {
+            const prevDay = new Date(dayStart.getTime() - 24 * 3600 * 1000);
+            const setTimePrev = Ast.SearchRiseSet(Ast.Body.Sun, obs, -1, prevDay, 1);
+            start = setTimePrev ? setTimePrev.date : new Date(prevDay.getTime() + 18 * 3600 * 1000);
+            end = sunriseCurr;
+            refDateForWeekday = prevDay;
+        } else {
+            const nextDay = new Date(dayStart.getTime() + 24 * 3600 * 1000);
+            const riseTimeNext = Ast.SearchRiseSet(Ast.Body.Sun, obs, 1, nextDay, 1);
+            start = sunsetCurr;
+            end = riseTimeNext ? riseTimeNext.date : new Date(nextDay.getTime() + 6 * 3600 * 1000);
+            refDateForWeekday = date;
+        }
+    }
+
+    const weekday = refDateForWeekday.getDay();
+    return { isDay, start, end, weekday };
+}
+
+const UPGRAHA_DEFS = [
+    { name: "Kala", lordIdx: 0, symbol: "Kl", isMandi: false },
+    { name: "Mrityu", lordIdx: 2, symbol: "Mr", isMandi: false },
+    { name: "Ardhaprahara", lordIdx: 3, symbol: "Ar", isMandi: false },
+    { name: "Yamaghantaka", lordIdx: 4, symbol: "Yg", isMandi: false },
+    { name: "Gulika", lordIdx: 6, symbol: "Gk", isMandi: false },
+    { name: "Mandi", lordIdx: 6, symbol: "Mn", isMandi: true }
+];
+
+export function calculateUpgrahas(
+    date: Date,
+    lat: number,
+    lon: number,
+    sunLongitude: number,
+    ayanamsaType: AyanamsaType,
+    refRasi: number
+): PlanetData[] {
+    const upgrahas: PlanetData[] = [];
+
+    // 1. Calculate Aprakasha Grahas (Sun-based)
+    const dhumaLong = (sunLongitude + 133.33333333) % 360;
+    const vyatipataLong = (360 - dhumaLong + 360) % 360;
+    const pariveshaLong = (vyatipataLong + 180) % 360;
+    const indrachapaLong = (360 - pariveshaLong + 360) % 360;
+    const upaketuLong = (indrachapaLong + 16.66666667) % 360;
+
+    const aprakasha = [
+        { name: "Dhuma", symbol: "Dh", longitude: dhumaLong },
+        { name: "Vyatipata", symbol: "Vy", longitude: vyatipataLong },
+        { name: "Parivesha", symbol: "Pv", longitude: pariveshaLong },
+        { name: "Indrachapa", symbol: "Id", longitude: indrachapaLong },
+        { name: "Upaketu", symbol: "Uk", longitude: upaketuLong }
+    ];
+
+    for (let i = 0; i < aprakasha.length; i++) {
+        const item = aprakasha[i];
+        const rasiIdx = Math.floor(item.longitude / 30);
+        const rasiDeg = item.longitude % 30;
+        const nakshatradeg = 360 / 27;
+        const pada = Math.floor((item.longitude % nakshatradeg) / (nakshatradeg / 4)) + 1;
+        const kakshyaIdx = Math.floor(rasiDeg / 3.75);
+
+        upgrahas.push({
+            name: item.name,
+            symbol: item.symbol,
+            longitude: item.longitude,
+            degree: formatDegree(rasiDeg),
+            rasi: RASIS[rasiIdx],
+            house: (rasiIdx - refRasi + 12) % 12 + 1,
+            nakshatra: NAKSHATRAS[Math.floor(item.longitude / (360 / 27))],
+            pada,
+            isRetrograde: false,
+            isCombust: false,
+            kakshya: KAKSHYA_LORDS[kakshyaIdx]
+        });
+    }
+
+    // 2. Calculate Kālavelā / Time-Based Grahas
+    const { isDay, start, end, weekday } = getVedicDayBounds(date, lat, lon);
+    const durationMs = end.getTime() - start.getTime();
+    const partDurationMs = durationMs / 8;
+
+    for (let i = 0; i < UPGRAHA_DEFS.length; i++) {
+        const def = UPGRAHA_DEFS[i];
+        let p = 0;
+        if (isDay) {
+            p = (def.lordIdx - weekday + 7) % 7;
+        } else {
+            p = (def.lordIdx - (weekday + 4) + 14) % 7;
+        }
+
+        const offsetFraction = def.isMandi ? (p + 0.5) : p;
+        const upgrahaTime = new Date(start.getTime() + offsetFraction * partDurationMs);
+        const astTime = Ast.MakeTime(upgrahaTime);
+        const ayan = getAyanamsa(astTime, ayanamsaType);
+
+        // Calculate Lagna at upgrahaTime
+        const RAMC = (Ast.SiderealTime(astTime) * 15 + lon) % 360;
+        const eps = Math.acos(Ast.Rotation_ECL_EQD(astTime).rot[2][2]);
+        const alpha = RAMC * Math.PI / 180;
+        const phi = lat * Math.PI / 180;
+        const l_trop = (Math.atan2(Math.cos(alpha), -(Math.sin(alpha) * Math.cos(eps) + Math.tan(phi) * Math.sin(eps))) * 180 / Math.PI + 360) % 360;
+        const longitude = (l_trop - ayan + 360) % 360;
+
+        const rasiIdx = Math.floor(longitude / 30);
+        const rasiDeg = longitude % 30;
+        const nakshatradeg = 360 / 27;
+        const pada = Math.floor((longitude % nakshatradeg) / (nakshatradeg / 4)) + 1;
+        const kakshyaIdx = Math.floor(rasiDeg / 3.75);
+
+        upgrahas.push({
+            name: def.name,
+            symbol: def.symbol,
+            longitude,
+            degree: formatDegree(rasiDeg),
+            rasi: RASIS[rasiIdx],
+            house: (rasiIdx - refRasi + 12) % 12 + 1,
+            nakshatra: NAKSHATRAS[Math.floor(longitude / (360 / 27))],
+            pada,
+            isRetrograde: false,
+            isCombust: false,
+            kakshya: KAKSHYA_LORDS[kakshyaIdx]
+        });
+    }
+
+    return upgrahas;
+}
 
 export interface PlanetData {
     name: string;
@@ -350,8 +514,21 @@ const KAKSHYA_LORDS = ["Saturn", "Jupiter", "Mars", "Sun", "Venus", "Mercury", "
 const formatDegree = (deg: number) => `${Math.floor(deg)}° ${Math.floor((deg % 1) * 60)}'`;
 
 export function calculateTransits(date: Date, lat: number = 28.6139, lon: number = 77.2090, birthDetails?: { date: Date, lat: number, lon: number }, ayanamsaType: AyanamsaType = 'Lahiri', refPlanet: string = "Ascendant"): {
-    planets: PlanetData[], d1: DivisionalChartData, d9: DivisionalChartData, d60: DivisionalChartData,
-    predictionsMoon: Predictions, predictionsLagna: Predictions, dasha?: DashaInfo, sadeSati?: SadeSatiInfo, gocharaScore: number, remedies: Remedy[], ashtakavarga?: AshtakavargaData
+    planets: PlanetData[],
+    upgrahas?: PlanetData[],
+    d1: DivisionalChartData,
+    d9: DivisionalChartData,
+    d60: DivisionalChartData,
+    d1WithUpgrahas?: DivisionalChartData,
+    d9WithUpgrahas?: DivisionalChartData,
+    d60WithUpgrahas?: DivisionalChartData,
+    predictionsMoon: Predictions,
+    predictionsLagna: Predictions,
+    dasha?: DashaInfo,
+    sadeSati?: SadeSatiInfo,
+    gocharaScore: number,
+    remedies: Remedy[],
+    ashtakavarga?: AshtakavargaData
 } {
     // LRU Cache mechanism
     const birthKey = birthDetails ? `${birthDetails.date.getTime()}_${birthDetails.lat}_${birthDetails.lon}` : 'none';
@@ -514,7 +691,57 @@ export function calculateTransits(date: Date, lat: number = 28.6139, lon: number
     const ascIdx = RASI_INDEX_MAP[ascRasi] ?? RASIS.indexOf(ascRasi);
     const planetsFromLagna = planets.map(p => ({ ...p, house: ((RASI_INDEX_MAP[p.rasi] ?? RASIS.indexOf(p.rasi)) - ascIdx + 12) % 12 + 1 }));
 
-    const result = { planets, d1, d9, d60, predictionsMoon: generatePredictions(planetsFromMoon, "Moon"), predictionsLagna: generatePredictions(planetsFromLagna, "Ascendant"), dasha, sadeSati, gocharaScore: calculateGocharaScore(planetsFromMoon, dasha, ashtakavarga), remedies: getRemedies(planetsFromMoon, dasha, sadeSati), ashtakavarga };
+    let sunLong = 0;
+    for (let i = 0; i < planets.length; i++) {
+        if (planets[i].name === "Sun") {
+            sunLong = planets[i].longitude;
+            break;
+        }
+    }
+    const upgrahas = calculateUpgrahas(date, lat, lon, sunLong, ayanamsaType, refRasi);
+
+    const d1WithUpgrahas: DivisionalChartData = { houses: {}, houseRasis: { ...d1.houseRasis } };
+    const d9WithUpgrahas: DivisionalChartData = { houses: {}, houseRasis: { ...d9.houseRasis } };
+    const d60WithUpgrahas: DivisionalChartData = { houses: {}, houseRasis: { ...d60.houseRasis } };
+
+    for (let i = 1; i <= 12; i++) {
+        d1WithUpgrahas.houses[i] = [...d1.houses[i]];
+        d9WithUpgrahas.houses[i] = [...d9.houses[i]];
+        d60WithUpgrahas.houses[i] = [...d60.houses[i]];
+    }
+
+    for (let i = 0; i < upgrahas.length; i++) {
+        const p = upgrahas[i];
+        if (p.house >= 1 && p.house <= 12) {
+            d1WithUpgrahas.houses[p.house].push({ symbol: p.symbol, isRetrograde: p.isRetrograde });
+        }
+        const h9 = (getD9Rasi(p.longitude) - refD9 + 12) % 12 + 1;
+        if (h9 >= 1 && h9 <= 12) {
+            d9WithUpgrahas.houses[h9].push({ symbol: p.symbol, isRetrograde: p.isRetrograde });
+        }
+        const h60 = (getD60Rasi(p.longitude) - refD60 + 12) % 12 + 1;
+        if (h60 >= 1 && h60 <= 12) {
+            d60WithUpgrahas.houses[h60].push({ symbol: p.symbol, isRetrograde: p.isRetrograde });
+        }
+    }
+
+    const result = {
+        planets,
+        upgrahas,
+        d1,
+        d9,
+        d60,
+        d1WithUpgrahas,
+        d9WithUpgrahas,
+        d60WithUpgrahas,
+        predictionsMoon: generatePredictions(planetsFromMoon, "Moon"),
+        predictionsLagna: generatePredictions(planetsFromLagna, "Ascendant"),
+        dasha,
+        sadeSati,
+        gocharaScore: calculateGocharaScore(planetsFromMoon, dasha, ashtakavarga),
+        remedies: getRemedies(planetsFromMoon, dasha, sadeSati),
+        ashtakavarga
+    };
 
     TRANSIT_CACHE.set(cacheKey, result);
     if (TRANSIT_CACHE.size > 200) {

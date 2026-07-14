@@ -46,6 +46,14 @@ export default function Home() {
   const [ashtakavarga, setAshtakavarga] = useState<AshtakavargaData | undefined>(undefined);
   const [remedies, setRemedies] = useState<Remedy[]>([]);
 
+  // Upgraha State
+  const [upgrahas, setUpgrahas] = useState<PlanetData[]>([]);
+  const [showUpgrahasInCharts, setShowUpgrahasInCharts] = useState<boolean>(false);
+  const [d1WithUpgrahas, setD1WithUpgrahas] = useState<DivisionalChartData | null>(null);
+  const [d9WithUpgrahas, setD9WithUpgrahas] = useState<DivisionalChartData | null>(null);
+  const [d60WithUpgrahas, setD60WithUpgrahas] = useState<DivisionalChartData | null>(null);
+  const [natalChartWithUpgrahas, setNatalChartWithUpgrahas] = useState<DivisionalChartData | null>(null);
+
   // UI State
   const [activeTab, setActiveTab] = useState("dashboard");
   const [ayanamsa, setAyanamsa] = useState<AyanamsaType>("Lahiri");
@@ -217,6 +225,10 @@ export default function Home() {
         setChartData(res.d1);
         setD9Data(res.d9);
         setD60Data(res.d60);
+        setUpgrahas(res.upgrahas || []);
+        setD1WithUpgrahas(res.d1WithUpgrahas || null);
+        setD9WithUpgrahas(res.d9WithUpgrahas || null);
+        setD60WithUpgrahas(res.d60WithUpgrahas || null);
         setPredictionsMoon(res.predictionsMoon);
         setPredictionsLagna(res.predictionsLagna);
         setDasha(res.dasha);
@@ -230,6 +242,7 @@ export default function Home() {
         if (birthDetails) {
             const natal = calculateTransits(birthDetails.date, birthDetails.lat, birthDetails.lon, undefined, ayanamsa);
             setNatalChart(natal.d1);
+            setNatalChartWithUpgrahas(natal.d1WithUpgrahas || null);
         }
       });
     }, 200);
@@ -664,26 +677,52 @@ export default function Home() {
             <div className="space-y-8 animate-in fade-in duration-500">
                 <header className="flex flex-col md:flex-row justify-between items-center gap-4 select-none">
                     <h1 className="text-4xl font-serif text-[#1D4046]">Deep Jyotish View</h1>
-                    <div className="flex bg-white rounded-lg border border-[#1D4046]/10 p-1 shadow-sm" role="group" aria-label="Select Chart Style">
-                        {["North", "South"].map(s => <button key={s} aria-pressed={chartStyle === s} onClick={() => setChartStyle(s as ChartStyle)} className={`px-4 py-1 text-xs rounded-md transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F59E0B] ${chartStyle === s ? 'bg-[#F59E0B] text-white font-bold' : 'text-[#1D4046]/60 hover:bg-[#F9F7F1]'}`}>{s} Indian</button>)}
+                    <div className="flex flex-wrap gap-4">
+                        <div className="flex bg-white rounded-lg border border-[#1D4046]/10 p-1 shadow-sm" role="group" aria-label="Select Chart Style">
+                            {["North", "South"].map(s => <button key={s} aria-pressed={chartStyle === s} onClick={() => setChartStyle(s as ChartStyle)} className={`px-4 py-1 text-xs rounded-md transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F59E0B] ${chartStyle === s ? 'bg-[#F59E0B] text-white font-bold' : 'text-[#1D4046]/60 hover:bg-[#F9F7F1]'}`}>{s} Indian</button>)}
+                        </div>
+                        <div className="flex bg-white rounded-lg border border-[#1D4046]/10 p-1 shadow-sm">
+                            <button
+                                aria-pressed={showUpgrahasInCharts}
+                                onClick={() => setShowUpgrahasInCharts(!showUpgrahasInCharts)}
+                                className={`px-4 py-1 text-xs rounded-md transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F59E0B] ${showUpgrahasInCharts ? 'bg-[#1D4046] text-white font-bold' : 'text-[#1D4046]/60 hover:bg-[#F9F7F1]'}`}
+                            >
+                                {showUpgrahasInCharts ? "Hide Upgrahas in Charts" : "Show Upgrahas in Charts"}
+                            </button>
+                        </div>
                     </div>
                 </header>
                 <div className="grid lg:grid-cols-2 gap-8">
                     <div className="bg-white p-6 rounded-3xl border border-[#1D4046]/10 shadow-sm">
                         <h2 className="text-center font-serif text-lg mb-6 text-[#F59E0B] select-none">Natal Chart (Birth)</h2>
-                        {natalChart ? <KundliChart data={natalChart} style={chartStyle} /> : <div className="h-64 bg-[#F9F7F1] rounded animate-pulse flex items-center justify-center text-xs opacity-40 italic">Set birth time to see natal chart...</div>}
+                        {natalChart ? (
+                            <KundliChart
+                                data={showUpgrahasInCharts ? (natalChartWithUpgrahas || natalChart) : natalChart}
+                                style={chartStyle}
+                            />
+                        ) : <div className="h-64 bg-[#F9F7F1] rounded animate-pulse flex items-center justify-center text-xs opacity-40 italic">Set birth time to see natal chart...</div>}
                     </div>
                     <div className="bg-white p-6 rounded-3xl border border-[#1D4046]/10 shadow-sm ring-2 ring-[#F59E0B]/20">
                         <h2 className="text-center font-serif text-lg mb-6 text-[#1D4046] select-none">Transit Chart (Now)</h2>
-                        {chartData ? <KundliChart data={chartData} style={chartStyle} /> : <div className="h-64 bg-[#F9F7F1] rounded animate-pulse" />}
+                        {chartData ? (
+                            <KundliChart
+                                data={showUpgrahasInCharts ? (d1WithUpgrahas || chartData) : chartData}
+                                style={chartStyle}
+                            />
+                        ) : <div className="h-64 bg-[#F9F7F1] rounded animate-pulse" />}
                     </div>
                 </div>
 
                 <div className="grid lg:grid-cols-2 gap-8">
-                    {[{t: "D9 Navamsa", d: d9Data}, {t: "D60 Shashtiamsa", d: d60Data}].map((c, i) => (
+                    {[{t: "D9 Navamsa", d: d9Data, du: d9WithUpgrahas}, {t: "D60 Shashtiamsa", d: d60Data, du: d60WithUpgrahas}].map((c, i) => (
                         <div key={i} className="bg-white p-6 rounded-3xl border border-[#1D4046]/10 shadow-sm">
                             <h2 className="text-center font-serif text-lg mb-6 select-none">{c.t}</h2>
-                            {c.d ? <KundliChart data={c.d} style={chartStyle} /> : <div className="h-64 bg-[#F9F7F1] rounded animate-pulse" />}
+                            {c.d ? (
+                                <KundliChart
+                                    data={showUpgrahasInCharts ? (c.du || c.d) : c.d}
+                                    style={chartStyle}
+                                />
+                            ) : <div className="h-64 bg-[#F9F7F1] rounded animate-pulse" />}
                         </div>
                     ))}
                 </div>
@@ -724,6 +763,42 @@ export default function Home() {
                         </table>
                     </div>
                 </section>
+
+                {upgrahas.length > 0 && (
+                    <section className="bg-white p-8 rounded-3xl border border-[#1D4046]/10 shadow-sm">
+                        <h2 className="text-2xl font-serif mb-8 text-[#1D4046] select-none">Upgrahas (Shadow Planets & Sub-Planets)</h2>
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-left text-sm">
+                                <thead className="border-b border-[#1D4046]/10">
+                                    <tr className="text-[#1D4046]/40 font-bold text-xs uppercase">
+                                        <th className="pb-4">Upgraha</th>
+                                        <th className="pb-4">Symbol</th>
+                                        <th className="pb-4">Degree</th>
+                                        <th className="pb-4">Rasi</th>
+                                        <th className="pb-4">House</th>
+                                        <th className="pb-4">Nakshatra</th>
+                                        <th className="pb-4">Pada</th>
+                                        <th className="pb-4">Kakshya</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-[#1D4046]/5">
+                                    {upgrahas.map((u) => (
+                                        <tr key={u.name} className="group hover:bg-[#F9F7F1]/50">
+                                            <td className="py-4 font-bold text-[#1D4046]">{u.name}</td>
+                                            <td className="py-4"><span className="px-2.5 py-1 bg-[#1D4046]/5 border border-[#1D4046]/10 text-xs font-serif rounded text-[#1D4046] font-bold select-none">{u.symbol}</span></td>
+                                            <td className="py-4">{u.degree}</td>
+                                            <td className="py-4">{u.rasi}</td>
+                                            <td className="py-4">{u.house}</td>
+                                            <td className="py-4">{u.nakshatra}</td>
+                                            <td className="py-4 text-center">{u.pada}</td>
+                                            <td className="py-4">{u.kakshya || "-"}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </section>
+                )}
 
                 {ashtakavarga && (
                     <section className="bg-white p-8 rounded-3xl border border-[#1D4046]/10 shadow-sm">
