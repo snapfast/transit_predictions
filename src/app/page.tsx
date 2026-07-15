@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, KeyboardEvent } from "react";
-import { calculateTransits, PlanetData, DivisionalChartData, Predictions, DashaInfo, SadeSatiInfo, Remedy, AyanamsaType, AshtakavargaData } from "@/lib/astrology";
+import { calculateTransits, PlanetData, DivisionalChartData, Predictions, DashaInfo, SadeSatiInfo, Remedy, AyanamsaType, AshtakavargaData, getRotatedChart, generatePredictionsFromRasi } from "@/lib/astrology";
 import KundliChart, { ChartStyle } from "@/components/KundliChart";
 import { Clock, MapPin, Calendar, Sun, Moon, Info, Sparkles, User, Navigation, ChevronUp, Settings, Edit2 } from "lucide-react";
 
@@ -40,6 +40,8 @@ export default function Home() {
   const [dasha, setDasha] = useState<DashaInfo | undefined>(undefined);
   const [sadeSati, setSadeSati] = useState<SadeSatiInfo | undefined>(undefined);
   const [natalChart, setNatalChart] = useState<DivisionalChartData | null>(null);
+  const [natalMoonRasi, setNatalMoonRasi] = useState<string>("Aries");
+  const [natalLagnaRasi, setNatalLagnaRasi] = useState<string>("Aries");
   const [gocharaScore, setGocharaScore] = useState<number>(50);
   const [timelineScores, setTimelineScores] = useState<number[]>([]);
   const [timelineEvents, setTimelineEvents] = useState<Array<{ day: number, label: string }>>([]);
@@ -59,6 +61,7 @@ export default function Home() {
   const [ayanamsa, setAyanamsa] = useState<AyanamsaType>("Lahiri");
   const [referencePoint, setReferencePoint] = useState<"Moon" | "Lagna" | "Dasha Lord">("Moon");
   const [predictionReference, setPredictionReference] = useState<"Moon" | "Lagna">("Moon");
+  const [timeResultTab, setTimeResultTab] = useState<"Aries" | "Moon" | "Lagna">("Moon");
   const [chartStyle, setChartStyle] = useState<ChartStyle>("North");
   const [scrubDays, setScrubDays] = useState<number>(0);
   const [isInitialized, setIsInitialized] = useState(false);
@@ -243,6 +246,16 @@ export default function Home() {
             const natal = calculateTransits(birthDetails.date, birthDetails.lat, birthDetails.lon, undefined, ayanamsa);
             setNatalChart(natal.d1);
             setNatalChartWithUpgrahas(natal.d1WithUpgrahas || null);
+
+            // Extract Moon and Lagna rasis from natal chart
+            const nMoon = natal.planets.find(p => p.name === "Moon");
+            if (nMoon) {
+                setNatalMoonRasi(nMoon.rasi);
+            }
+            const nLagna = natal.planets.find(p => p.name === "Ascendant");
+            if (nLagna) {
+                setNatalLagnaRasi(nLagna.rasi);
+            }
         }
       });
     }, 200);
@@ -667,20 +680,186 @@ export default function Home() {
                         </div>
                     </div>
                 </section>
-                <div className="grid md:grid-cols-2 gap-8">
-                    <div className="bg-white p-6 rounded-3xl border border-[#1D4046]/10 shadow-sm">
-                      <h2 className="text-center font-serif text-xl mb-6">Transit Chart (D1)</h2>
-                      {chartData ? <KundliChart data={chartData} style={chartStyle} /> : <div className="h-64 bg-[#F9F7F1] rounded animate-pulse" />}
-                    </div>
-                    <div className="bg-white p-8 rounded-3xl border border-[#1D4046]/10 shadow-sm">
-                        <h2 className="font-serif text-xl mb-6">Detailed Forecast</h2>
-                        <ul className="space-y-4">
-                            {(referencePoint === "Lagna" ? predictionsLagna : predictionsMoon).placements.slice(0, 6).map((p, i) => (
-                                <li key={i} className="flex gap-4 text-sm text-[#1D4046]/70 leading-relaxed border-b border-[#1D4046]/5 pb-4 last:border-0"><span className="text-[#F59E0B] font-bold">✦</span>{p}</li>
-                            ))}
-                        </ul>
+                {/* 3 Rotated Charts for Analysis */}
+                <div className="space-y-6 select-none">
+                    <h2 className="text-xs font-bold text-[#1D4046]/60 uppercase tracking-[0.3em] flex items-center gap-3">
+                        <div className="h-px w-8 bg-[#F59E0B]/40" /> 3-Way Transit Chart Analysis
+                    </h2>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        {/* 1. Aries Chart (from Aries Mesha) */}
+                        <div className="bg-white p-6 rounded-3xl border border-[#1D4046]/10 shadow-sm flex flex-col justify-between">
+                            <div className="text-center mb-4">
+                                <h3 className="font-serif text-lg font-bold">From Aries (Mesha)</h3>
+                                <p className="text-xs text-[#1D4046]/60">Standard zodiac reference view</p>
+                            </div>
+                            <div className="flex-1 flex items-center justify-center">
+                                {planets.length > 0 ? (
+                                    <KundliChart
+                                        data={getRotatedChart(
+                                            showUpgrahasInCharts ? [...planets, ...upgrahas] : planets,
+                                            0
+                                        )}
+                                        style={chartStyle}
+                                    />
+                                ) : (
+                                    <div className="h-64 bg-[#F9F7F1] rounded animate-pulse w-full" />
+                                )}
+                            </div>
+                        </div>
+
+                        {/* 2. Moon Chart (from Native's Moon/Chandra Lagna) */}
+                        <div className="bg-white p-6 rounded-3xl border border-[#1D4046]/10 shadow-sm flex flex-col justify-between ring-2 ring-[#F59E0B]/10">
+                            <div className="text-center mb-4">
+                                <h3 className="font-serif text-lg font-bold text-[#F59E0B]">From Moon (Chandra Lagna)</h3>
+                                <p className="text-xs text-[#1D4046]/60 font-semibold">Chandra: {natalMoonRasi}</p>
+                            </div>
+                            <div className="flex-1 flex items-center justify-center">
+                                {planets.length > 0 ? (
+                                    <KundliChart
+                                        data={getRotatedChart(
+                                            showUpgrahasInCharts ? [...planets, ...upgrahas] : planets,
+                                            ["Aries", "Taurus", "Gemini", "Cancer", "Leo", "Virgo", "Libra", "Scorpio", "Sagittarius", "Capricorn", "Aquarius", "Pisces"].indexOf(natalMoonRasi) === -1 ? 0 : ["Aries", "Taurus", "Gemini", "Cancer", "Leo", "Virgo", "Libra", "Scorpio", "Sagittarius", "Capricorn", "Aquarius", "Pisces"].indexOf(natalMoonRasi)
+                                        )}
+                                        style={chartStyle}
+                                    />
+                                ) : (
+                                    <div className="h-64 bg-[#F9F7F1] rounded animate-pulse w-full" />
+                                )}
+                            </div>
+                        </div>
+
+                        {/* 3. Lagna Chart (from Native's Lagna/Janma Lagna) */}
+                        <div className="bg-white p-6 rounded-3xl border border-[#1D4046]/10 shadow-sm flex flex-col justify-between">
+                            <div className="text-center mb-4">
+                                <h3 className="font-serif text-lg font-bold">{"From Native's Lagna"}</h3>
+                                <p className="text-xs text-[#1D4046]/60">Janma Lagna: {natalLagnaRasi}</p>
+                            </div>
+                            <div className="flex-1 flex items-center justify-center">
+                                {planets.length > 0 ? (
+                                    <KundliChart
+                                        data={getRotatedChart(
+                                            showUpgrahasInCharts ? [...planets, ...upgrahas] : planets,
+                                            ["Aries", "Taurus", "Gemini", "Cancer", "Leo", "Virgo", "Libra", "Scorpio", "Sagittarius", "Capricorn", "Aquarius", "Pisces"].indexOf(natalLagnaRasi) === -1 ? 0 : ["Aries", "Taurus", "Gemini", "Cancer", "Leo", "Virgo", "Libra", "Scorpio", "Sagittarius", "Capricorn", "Aquarius", "Pisces"].indexOf(natalLagnaRasi)
+                                        )}
+                                        style={chartStyle}
+                                    />
+                                ) : (
+                                    <div className="h-64 bg-[#F9F7F1] rounded animate-pulse w-full" />
+                                )}
+                            </div>
+                        </div>
                     </div>
                 </div>
+
+                {/* 3-Way Transit Predictions & Results */}
+                {(() => {
+                    const rasisList = ["Aries", "Taurus", "Gemini", "Cancer", "Leo", "Virgo", "Libra", "Scorpio", "Sagittarius", "Capricorn", "Aquarius", "Pisces"];
+                    const moonRasiIdx = rasisList.indexOf(natalMoonRasi);
+                    const lagnaRasiIdx = rasisList.indexOf(natalLagnaRasi);
+
+                    const activePredictions = timeResultTab === "Aries"
+                        ? generatePredictionsFromRasi(planets, 0, "Aries")
+                        : timeResultTab === "Moon"
+                        ? generatePredictionsFromRasi(planets, moonRasiIdx === -1 ? 0 : moonRasiIdx, "Moon")
+                        : generatePredictionsFromRasi(planets, lagnaRasiIdx === -1 ? 0 : lagnaRasiIdx, "Lagna");
+
+                    return (
+                        <div className="space-y-6">
+                            <div className="flex flex-col md:flex-row justify-between items-center gap-4 border-b border-[#1D4046]/10 pb-4 select-none">
+                                <div>
+                                    <h2 className="text-xl font-serif text-[#1D4046]">Transit Interpretations</h2>
+                                    <p className="text-xs text-[#1D4046]/60">Compare predictions from different reference frames</p>
+                                </div>
+                                <div className="flex bg-white rounded-lg border border-[#1D4046]/10 p-1 shadow-sm" role="group" aria-label="Select Interpretation Reference">
+                                    <button
+                                        aria-pressed={timeResultTab === "Aries"}
+                                        onClick={() => setTimeResultTab("Aries")}
+                                        className={`px-4 py-1.5 text-xs rounded-md transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F59E0B] ${timeResultTab === "Aries" ? 'bg-[#1D4046] text-white font-bold' : 'text-[#1D4046]/60 hover:bg-[#F9F7F1]'}`}
+                                    >
+                                        From Aries (Mesha)
+                                    </button>
+                                    <button
+                                        aria-pressed={timeResultTab === "Moon"}
+                                        onClick={() => setTimeResultTab("Moon")}
+                                        className={`px-4 py-1.5 text-xs rounded-md transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F59E0B] ${timeResultTab === "Moon" ? 'bg-[#1D4046] text-white font-bold' : 'text-[#1D4046]/60 hover:bg-[#F9F7F1]'}`}
+                                    >
+                                        From Moon ({natalMoonRasi})
+                                    </button>
+                                    <button
+                                        aria-pressed={timeResultTab === "Lagna"}
+                                        onClick={() => setTimeResultTab("Lagna")}
+                                        className={`px-4 py-1.5 text-xs rounded-md transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F59E0B] ${timeResultTab === "Lagna" ? 'bg-[#1D4046] text-white font-bold' : 'text-[#1D4046]/60 hover:bg-[#F9F7F1]'}`}
+                                    >
+                                        From Lagna ({natalLagnaRasi})
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* Results Container */}
+                            <div className="grid lg:grid-cols-3 gap-8">
+                                {/* 1. Placements (Houses) */}
+                                <div className="bg-white p-6 rounded-3xl border border-[#1D4046]/10 shadow-sm space-y-4">
+                                    <h3 className="font-serif text-lg font-bold border-b border-[#1D4046]/5 pb-2 text-[#1D4046] flex items-center gap-2 select-none">
+                                        <span className="w-2 h-2 rounded-full bg-[#F59E0B]" /> House Placements
+                                    </h3>
+                                    <ul className="space-y-3 max-h-96 overflow-y-auto pr-2">
+                                        {activePredictions.placements.map((p, idx) => {
+                                            const [title, desc] = p.split(': ');
+                                            return (
+                                                <li key={idx} className="text-sm text-[#1D4046]/80 leading-relaxed border-b border-[#1D4046]/5 pb-3 last:border-0 last:pb-0">
+                                                    <div className="font-bold text-[#1D4046]">{title}</div>
+                                                    <div className="text-xs text-[#1D4046]/70 mt-1">{desc}</div>
+                                                </li>
+                                            );
+                                        })}
+                                    </ul>
+                                </div>
+
+                                {/* 2. Aspects */}
+                                <div className="bg-white p-6 rounded-3xl border border-[#1D4046]/10 shadow-sm space-y-4">
+                                    <h3 className="font-serif text-lg font-bold border-b border-[#1D4046]/5 pb-2 text-[#1D4046] flex items-center gap-2 select-none">
+                                        <span className="w-2 h-2 rounded-full bg-[#1D4046]" /> Planetary Aspects
+                                    </h3>
+                                    <ul className="space-y-3 max-h-96 overflow-y-auto pr-2">
+                                        {activePredictions.aspects.map((aspect, idx) => (
+                                            <li key={idx} className="text-sm text-[#1D4046]/80 leading-relaxed border-b border-[#1D4046]/5 pb-3 last:border-0 last:pb-0 flex items-start gap-2">
+                                                <span className="text-[#F59E0B] font-bold select-none">✦</span>
+                                                <span>{aspect}</span>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </div>
+
+                                {/* 3. Active Yogas */}
+                                <div className="bg-[#1D4046] p-6 rounded-3xl text-white shadow-sm space-y-4 flex flex-col justify-between">
+                                    <div>
+                                        <h3 className="font-serif text-lg font-bold border-b border-white/10 pb-2 text-white flex items-center gap-2 select-none">
+                                            <Sparkles className="w-4 h-4 text-[#F59E0B]" /> Active Yogas
+                                        </h3>
+                                        {activePredictions.yogas.length > 0 ? (
+                                            <ul className="space-y-4 mt-4 max-h-80 overflow-y-auto pr-2">
+                                                {activePredictions.yogas.map((yoga, idx) => {
+                                                    const [title, desc] = yoga.split(': ');
+                                                    return (
+                                                        <li key={idx} className="bg-white/5 p-3 rounded-xl border border-white/10">
+                                                            <div className="font-bold text-[#F59E0B] text-sm">{title}</div>
+                                                            <div className="text-xs text-white/80 mt-1">{desc}</div>
+                                                        </li>
+                                                    );
+                                                })}
+                                            </ul>
+                                        ) : (
+                                            <div className="text-sm text-white/60 italic mt-6 flex flex-col items-center justify-center py-12 text-center select-none">
+                                                <Sparkles className="w-8 h-8 mb-2 opacity-25" />
+                                                No major transit yogas active for this reference point.
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    );
+                })()}
             </div>
         )}
 
