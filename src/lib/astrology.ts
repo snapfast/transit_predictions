@@ -705,57 +705,70 @@ export function calculateTransits(date: Date, lat: number = 28.6139, lon: number
     const ascIdx = RASI_INDEX_MAP[ascRasi] ?? RASIS.indexOf(ascRasi);
     const planetsFromLagna = planets.map(p => ({ ...p, house: ((RASI_INDEX_MAP[p.rasi] ?? RASIS.indexOf(p.rasi)) - ascIdx + 12) % 12 + 1 }));
 
-    let sunLong = 0;
-    for (let i = 0; i < planets.length; i++) {
-        if (planets[i].name === "Sun") {
-            sunLong = planets[i].longitude;
-            break;
-        }
-    }
-    const upgrahas = calculateUpgrahas(date, lat, lon, sunLong, ayanamsaType, refRasi);
-
-    const d1WithUpgrahas: DivisionalChartData = { houses: {}, houseRasis: { ...d1.houseRasis } };
-    const d9WithUpgrahas: DivisionalChartData = { houses: {}, houseRasis: { ...d9.houseRasis } };
-    const d60WithUpgrahas: DivisionalChartData = { houses: {}, houseRasis: { ...d60.houseRasis } };
-
-    for (let i = 1; i <= 12; i++) {
-        d1WithUpgrahas.houses[i] = [...d1.houses[i]];
-        d9WithUpgrahas.houses[i] = [...d9.houses[i]];
-        d60WithUpgrahas.houses[i] = [...d60.houses[i]];
-    }
-
-    for (let i = 0; i < upgrahas.length; i++) {
-        const p = upgrahas[i];
-        if (p.house >= 1 && p.house <= 12) {
-            d1WithUpgrahas.houses[p.house].push({ symbol: p.symbol, isRetrograde: p.isRetrograde });
-        }
-        const h9 = (getD9Rasi(p.longitude) - refD9 + 12) % 12 + 1;
-        if (h9 >= 1 && h9 <= 12) {
-            d9WithUpgrahas.houses[h9].push({ symbol: p.symbol, isRetrograde: p.isRetrograde });
-        }
-        const h60 = (getD60Rasi(p.longitude) - refD60 + 12) % 12 + 1;
-        if (h60 >= 1 && h60 <= 12) {
-            d60WithUpgrahas.houses[h60].push({ symbol: p.symbol, isRetrograde: p.isRetrograde });
-        }
-    }
-
     const result = {
         planets,
-        upgrahas,
         d1,
         d9,
         d60,
-        d1WithUpgrahas,
-        d9WithUpgrahas,
-        d60WithUpgrahas,
         predictionsMoon: generatePredictions(planetsFromMoon, "Moon"),
         predictionsLagna: generatePredictions(planetsFromLagna, "Ascendant"),
         dasha,
         sadeSati,
         gocharaScore: calculateGocharaScore(planetsFromMoon, dasha, ashtakavarga),
         remedies: getRemedies(planetsFromMoon, dasha, sadeSati),
-        ashtakavarga
+        ashtakavarga,
+        get upgrahas() { computeUpgrahas(); return _upgrahas; },
+        get d1WithUpgrahas() { computeUpgrahas(); return _d1WithUpgrahas; },
+        get d9WithUpgrahas() { computeUpgrahas(); return _d9WithUpgrahas; },
+        get d60WithUpgrahas() { computeUpgrahas(); return _d60WithUpgrahas; }
     };
+
+    let _upgrahasCalculated = false;
+    let _upgrahas: PlanetData[] = [];
+    let _d1WithUpgrahas: DivisionalChartData;
+    let _d9WithUpgrahas: DivisionalChartData;
+    let _d60WithUpgrahas: DivisionalChartData;
+
+    function computeUpgrahas() {
+        if (_upgrahasCalculated) return;
+        _upgrahasCalculated = true;
+
+        let sunLong = 0;
+        for (let i = 0; i < planets.length; i++) {
+            if (planets[i].name === "Sun") {
+                sunLong = planets[i].longitude;
+                break;
+            }
+        }
+        _upgrahas = calculateUpgrahas(date, lat, lon, sunLong, ayanamsaType, refRasi);
+
+        _d1WithUpgrahas = { houses: {}, houseRasis: { ...d1.houseRasis } };
+        _d9WithUpgrahas = { houses: {}, houseRasis: { ...d9.houseRasis } };
+        _d60WithUpgrahas = { houses: {}, houseRasis: { ...d60.houseRasis } };
+
+        for (let i = 1; i <= 12; i++) {
+            _d1WithUpgrahas.houses[i] = [...d1.houses[i]];
+            _d9WithUpgrahas.houses[i] = [...d9.houses[i]];
+            _d60WithUpgrahas.houses[i] = [...d60.houses[i]];
+        }
+
+        for (let i = 0; i < _upgrahas.length; i++) {
+            const p = _upgrahas[i];
+            if (p.house >= 1 && p.house <= 12) {
+                _d1WithUpgrahas.houses[p.house].push({ symbol: p.symbol, isRetrograde: p.isRetrograde });
+            }
+            const h9 = (getD9Rasi(p.longitude) - refD9 + 12) % 12 + 1;
+            if (h9 >= 1 && h9 <= 12) {
+                _d9WithUpgrahas.houses[h9].push({ symbol: p.symbol, isRetrograde: p.isRetrograde });
+            }
+            const h60 = (getD60Rasi(p.longitude) - refD60 + 12) % 12 + 1;
+            if (h60 >= 1 && h60 <= 12) {
+                _d60WithUpgrahas.houses[h60].push({ symbol: p.symbol, isRetrograde: p.isRetrograde });
+            }
+        }
+    }
+
+
 
     TRANSIT_CACHE.set(cacheKey, result);
     if (TRANSIT_CACHE.size > 200) {
