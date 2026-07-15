@@ -29,6 +29,43 @@ export default function Home() {
   const [isLoadingCity, setIsLoadingCity] = useState(false);
   const [activeSuggestionIndex, setActiveSuggestionIndex] = useState(-1);
   const suggestionRef = useRef<HTMLDivElement>(null);
+  const svgRef = useRef<SVGSVGElement>(null);
+
+  // Helper to calculate the scrubbed date string dynamically
+  const getScrubbedDateStr = () => {
+    if (!transitDateStr || !transitTimeStr) return "";
+    const [ty, tm, td] = transitDateStr.split('-').map(Number);
+    const [th, tmin] = transitTimeStr.split(':').map(Number);
+    const base = new Date(ty, tm - 1, td, th, tmin);
+    const scrubbed = new Date(base.getTime() + scrubDays * 24 * 60 * 60 * 1000);
+    return scrubbed.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+  };
+
+  // Helper to handle timeline click/drag scrub interactions
+  const handleSvgInteraction = (clientX: number) => {
+    if (!svgRef.current) return;
+    const rect = svgRef.current.getBoundingClientRect();
+    const relativeX = clientX - rect.left;
+    const percentage = relativeX / rect.width;
+    const day = Math.round(percentage * 60 - 30);
+    setScrubDays(Math.max(-30, Math.min(30, day)));
+  };
+
+  const handleSvgClick = (e: React.MouseEvent<SVGSVGElement>) => {
+    handleSvgInteraction(e.clientX);
+  };
+
+  const handleSvgMouseMove = (e: React.MouseEvent<SVGSVGElement>) => {
+    if (e.buttons === 1) {
+      handleSvgInteraction(e.clientX);
+    }
+  };
+
+  const handleSvgTouchMove = (e: React.TouchEvent<SVGSVGElement>) => {
+    if (e.touches.length > 0) {
+      handleSvgInteraction(e.touches[0].clientX);
+    }
+  };
 
   // Astrological Data State
   const [planets, setPlanets] = useState<PlanetData[]>([]);
@@ -163,7 +200,7 @@ export default function Home() {
     };
   }, [birthPob, transitPob, showSuggestionsFor]);
 
-  // Main Calculation Effect
+  // 1. Timeline Background Score & Event Calculation Effect
   useEffect(() => {
     if (!isInitialized || !birthDateStr || !birthTimeStr || !transitDateStr || !transitTimeStr) return;
 
@@ -174,12 +211,65 @@ export default function Home() {
 
       const [ty, tm, td] = transitDateStr.split('-').map(Number);
       const [th, tmin] = transitTimeStr.split(':').map(Number);
-      let calculationDate = new Date(ty, tm - 1, td, th, tmin);
+      const baseTransitDate = new Date(ty, tm - 1, td, th, tmin);
 
-      if (scrubDays !== 0) {
-        calculationDate = new Date(calculationDate.getTime() + scrubDays * 24 * 60 * 60 * 1000);
+      const birthDetails = { date: birthDateObj, lat: birthLat, lon: birthLon };
+
+      let refPlanetName: string = referencePoint === "Moon" ? "Moon" : "Ascendant";
+      if (referencePoint === "Dasha Lord") {
+        const { dasha: initialDasha } = calculateTransits(baseTransitDate, transitLat, transitLon, birthDetails, ayanamsa);
+        if (initialDasha) {
+          refPlanetName = initialDasha.mahadasha.lord;
+        }
       }
 
+      // Calculate timeline scores and events for 61 days (centered around baseTransitDate)
+      const scores: number[] = [];
+      const events: Array<{ day: number, label: string }> = [];
+      const startTime = new Date(baseTransitDate.getTime() - 30 * 24 * 60 * 60 * 1000);
+      const lastPositions: {[key: string]: string} = {};
+
+      for (let i = 0; i <= 60; i++) {
+        const d = new Date(startTime.getTime() + i * 24 * 60 * 60 * 1000);
+        const t = calculateTransits(d, transitLat, transitLon, undefined, ayanamsa, refPlanetName);
+
+        scores.push(t.gocharaScore);
+
+        for (let j = 0; j < t.planets.length; j++) {
+          const p = t.planets[j];
+          const n = p.name;
+          if (n === "Sun" || n === "Moon" || n === "Mars" || n === "Mercury" || n === "Jupiter" || n === "Venus" || n === "Saturn") {
+            if (lastPositions[n] && lastPositions[n] !== p.rasi) {
+              events.push({ day: i - 30, label: `${n} enters ${p.rasi}` });
+            }
+            lastPositions[n] = p.rasi;
+          }
+        }
+      }
+
+      queueMicrotask(() => {
+        setTimelineScores(scores);
+        setTimelineEvents(events);
+      });
+    }, 250);
+
+    return () => clearTimeout(timer);
+  }, [birthDateStr, birthTimeStr, birthLat, birthLon, transitDateStr, transitTimeStr, transitLat, transitLon, ayanamsa, referencePoint, isInitialized]);
+
+  // 2. Fast Active Single-Day Calculation Effect
+  useEffect(() => {
+    if (!isInitialized || !birthDateStr || !birthTimeStr || !transitDateStr || !transitTimeStr) return;
+
+    const timer = setTimeout(() => {
+      const [by, bm, bd] = birthDateStr.split('-').map(Number);
+      const [bh, bmin] = birthTimeStr.split(':').map(Number);
+      const birthDateObj = new Date(by, bm - 1, bd, bh, bmin);
+
+      const [ty, tm, td] = transitDateStr.split('-').map(Number);
+      const [th, tmin] = transitTimeStr.split(':').map(Number);
+      const baseTransitDate = new Date(ty, tm - 1, td, th, tmin);
+
+      const calculationDate = new Date(baseTransitDate.getTime() + scrubDays * 24 * 60 * 60 * 1000);
       const birthDetails = { date: birthDateObj, lat: birthLat, lon: birthLon };
 
       let refPlanetName: string = referencePoint === "Moon" ? "Moon" : "Ascendant";
@@ -191,34 +281,6 @@ export default function Home() {
       }
 
       const res = calculateTransits(calculationDate, transitLat, transitLon, birthDetails, ayanamsa, refPlanetName);
-
-      // Calculate timeline scores and events (Optimized: No birthDetails to skip redundant heavy logic)
-      const scores: number[] = [];
-      const events: Array<{ day: number, label: string }> = [];
-      const startTime = new Date(calculationDate.getTime() - 30 * 24 * 60 * 60 * 1000);
-      const lastPositions: {[key: string]: string} = {};
-
-      for (let i = 0; i <= 60; i++) {
-        const d = new Date(startTime.getTime() + i * 24 * 60 * 60 * 1000);
-        // By omitting birthDetails here, calculateTransits skips Dasha, Sade Sati, and Ashtakavarga recursions
-        const t = calculateTransits(d, transitLat, transitLon, undefined, ayanamsa, refPlanetName);
-
-        if (i % 2 === 0) {
-          scores.push(t.gocharaScore);
-        }
-
-        for (let j = 0; j < t.planets.length; j++) {
-          const p = t.planets[j];
-          const n = p.name;
-          // Bolt Optimization: Replace `.forEach` and `.includes` with standard `for` loop and boolean checks
-          if (n === "Sun" || n === "Moon" || n === "Mars" || n === "Mercury" || n === "Jupiter" || n === "Venus" || n === "Saturn") {
-            if (lastPositions[n] && lastPositions[n] !== p.rasi) {
-              events.push({ day: i - 30, label: `${n} enters ${p.rasi}` });
-            }
-            lastPositions[n] = p.rasi;
-          }
-        }
-      }
 
       queueMicrotask(() => {
         setPlanets(res.planets);
@@ -234,8 +296,6 @@ export default function Home() {
         setDasha(res.dasha);
         setSadeSati(res.sadeSati);
         setGocharaScore(res.gocharaScore);
-        setTimelineScores(scores);
-        setTimelineEvents(events);
         setAshtakavarga(res.ashtakavarga);
         setRemedies(res.remedies);
 
@@ -245,7 +305,7 @@ export default function Home() {
             setNatalChartWithUpgrahas(natal.d1WithUpgrahas || null);
         }
       });
-    }, 200);
+    }, 50); // Minimal 50ms delay for ultra-fast, snappy scrubbing response
 
     return () => clearTimeout(timer);
   }, [birthDateStr, birthTimeStr, birthLat, birthLon, transitDateStr, transitTimeStr, transitLat, transitLon, scrubDays, ayanamsa, referencePoint, isInitialized]);
@@ -619,51 +679,180 @@ export default function Home() {
 
         {activeTab === "timeline" && (
             <div className="space-y-8 animate-in fade-in duration-500">
-                <h1 className="text-4xl font-serif text-[#1D4046] select-none">Sky Timeline</h1>
-                <section className="bg-white p-8 rounded-3xl border border-[#1D4046]/10 shadow-sm space-y-8 select-none">
-                    <div className="flex justify-between items-end">
-                        <div>
-                            <div className="text-xs font-bold text-[#1D4046]/40 uppercase tracking-widest mb-1 flex items-center gap-2">
-                                Interactive Scrubber
+                <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 select-none">
+                    <div>
+                        <h1 className="text-4xl font-serif text-[#1D4046]">Transit Timeline</h1>
+                        <p className="text-sm text-[#1D4046]/60 mt-1">Scrub forward or backward up to 30 days to preview upcoming energy transitions.</p>
+                    </div>
+                </header>
+
+                <section className="bg-white p-8 rounded-3xl border border-[#1D4046]/10 shadow-sm space-y-6 select-none relative overflow-hidden">
+                    {/* Floating Premium Details Panel */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-center border-b border-[#1D4046]/5 pb-6">
+                        <div className="space-y-1">
+                            <div className="text-xs font-bold text-[#1D4046]/40 uppercase tracking-widest flex items-center gap-2">
+                                Current Position
                                 {scrubDays !== 0 && (
                                     <button
                                         onClick={() => setScrubDays(0)}
                                         aria-label="Reset to current date"
-                                        className="bg-[#F59E0B]/10 text-[#F59E0B] px-2 py-0.5 rounded text-[10px] font-bold hover:bg-[#F59E0B]/20 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F59E0B]"
+                                        className="bg-[#F59E0B]/15 text-[#F59E0B] px-2 py-0.5 rounded text-[10px] font-extrabold hover:bg-[#F59E0B]/25 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F59E0B]"
                                     >
-                                        Reset
+                                        Reset to Today
                                     </button>
                                 )}
                             </div>
-                            <div className="text-2xl font-serif">{scrubDays === 0 ? 'Transit Date' : `${Math.abs(scrubDays)} days ${scrubDays > 0 ? 'forward' : 'back'}`}</div>
+                            <div className="text-2xl font-serif text-[#1D4046]">{getScrubbedDateStr()}</div>
+                            <div className="text-xs text-[#1D4046]/50">
+                                {scrubDays === 0 ? "Today" : `${Math.abs(scrubDays)} days ${scrubDays > 0 ? 'forward' : 'backward'} in time`}
+                            </div>
                         </div>
-                        <div className="text-4xl font-serif text-[#F59E0B]">{gocharaScore.toFixed(1)}%</div>
-                    </div>
-                    <input type="range" min="-30" max="30" value={scrubDays} onChange={e => setScrubDays(parseInt(e.target.value))} aria-label="Transit Timeline Scrubber" aria-valuetext={scrubDays === 0 ? "Current Date" : `${Math.abs(scrubDays)} days ${scrubDays > 0 ? 'forward' : 'back'}`} className="w-full h-1.5 bg-[#F9F7F1] rounded-lg appearance-none cursor-pointer accent-[#F59E0B] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F59E0B]" />
-                    <div className="h-48 w-full bg-[#F9F7F1] rounded-2xl border border-[#1D4046]/5 p-4 relative overflow-hidden">
-                        <svg role="img" aria-label="Interactive timeline showing transit score over 60 days" className="w-full h-full" preserveAspectRatio="none" viewBox="0 0 100 100">
-                            {timelineScores.length > 0 && (
-                              <path d={`M ${timelineScores.map((s, i) => `${(i / (timelineScores.length - 1)) * 100},${100 - s}`).join(' L ')}`} fill="none" stroke="#F59E0B" strokeWidth="3" strokeLinecap="round" />
-                            )}
-                            <line x1="50" y1="0" x2="50" y2="100" stroke="#1D4046" strokeWidth="1" strokeDasharray="4" strokeOpacity="0.2" />
 
-                            {timelineEvents.map((ev, idx) => (
-                                <g key={idx}>
-                                    <line x1={50 + (ev.day / 30) * 50} y1="0" x2={50 + (ev.day / 30) * 50} y2="100" stroke="#F59E0B" strokeWidth="0.5" strokeDasharray="2" opacity="0.5" />
-                                    <circle cx={50 + (ev.day / 30) * 50} cy="10" r="1.5" fill="#F59E0B" />
-                                </g>
-                            ))}
-
-                            <circle cx={50 + (scrubDays / 30) * 50} cy={100 - gocharaScore} r="4" fill="#F59E0B" />
-                        </svg>
-
-                        {/* Event Tooltips (Subtle) */}
-                        <div className="absolute top-2 left-0 w-full flex justify-center pointer-events-none">
-                            {timelineEvents.filter(e => Math.abs(e.day - scrubDays) < 1).map((e, i) => (
-                                <div key={i} className="bg-[#1D4046] text-white text-[10px] px-2 py-1 rounded shadow-lg animate-in fade-in zoom-in">
-                                    {e.label}
+                        <div className="flex md:justify-center items-center gap-4">
+                            <div className="w-12 h-12 rounded-2xl bg-[#F59E0B]/10 flex items-center justify-center font-serif text-xl font-bold text-[#F59E0B]">
+                                {gocharaScore.toFixed(0)}
+                            </div>
+                            <div>
+                                <div className="text-xs font-bold text-[#1D4046]/40 uppercase tracking-widest">Gochara Score</div>
+                                <div className={`text-sm font-bold ${gocharaScore >= 70 ? 'text-green-600' : gocharaScore >= 50 ? 'text-yellow-600' : 'text-red-500'}`}>
+                                    {gocharaScore >= 70 ? 'Highly Auspicious' : gocharaScore >= 50 ? 'Stable & Supportive' : 'Exercise Caution'}
                                 </div>
-                            ))}
+                            </div>
+                        </div>
+
+                        <div className="flex flex-col md:items-end justify-center space-y-1">
+                            <div className="text-xs font-bold text-[#1D4046]/40 uppercase tracking-widest">Active Sign Transits</div>
+                            <div className="flex flex-wrap md:justify-end gap-1.5 max-w-xs">
+                                {timelineEvents.filter(e => e.day === scrubDays).length > 0 ? (
+                                    timelineEvents.filter(e => e.day === scrubDays).map((ev, i) => (
+                                        <span key={i} className="text-[10px] font-bold bg-[#F59E0B] text-white px-2.5 py-1 rounded-full shadow-sm animate-bounce">
+                                            {ev.label}
+                                        </span>
+                                    ))
+                                ) : (
+                                    <span className="text-xs text-[#1D4046]/40 italic">No exact sign changes today</span>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Timeline Graph Wrapper */}
+                    <div className="relative">
+                        {/* Absolute Y-Axis Grid Label Guides */}
+                        <div className="absolute inset-y-0 left-0 flex flex-col justify-between pointer-events-none text-[10px] font-bold text-[#1D4046]/30 uppercase pl-1 select-none py-2">
+                            <div>Excellent</div>
+                            <div>Neutral</div>
+                            <div>Caution</div>
+                        </div>
+
+                        <div className="h-56 w-full bg-gradient-to-b from-[#F9F7F1]/50 to-white rounded-2xl border border-[#1D4046]/5 relative overflow-hidden select-none">
+                            {/* Interactive SVG Chart */}
+                            <svg
+                                ref={svgRef}
+                                role="img"
+                                aria-label="Interactive timeline showing transit score over 60 days"
+                                className="w-full h-full select-none cursor-ew-resize overflow-visible"
+                                preserveAspectRatio="none"
+                                viewBox="0 0 100 100"
+                                onClick={handleSvgClick}
+                                onMouseMove={handleSvgMouseMove}
+                                onTouchMove={handleSvgTouchMove}
+                            >
+                                <defs>
+                                    <linearGradient id="timeline-gradient" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="0%" stopColor="#F59E0B" stopOpacity="0.18" />
+                                        <stop offset="100%" stopColor="#F59E0B" stopOpacity="0.00" />
+                                    </linearGradient>
+                                </defs>
+
+                                {/* Neutral Baseline Indicator (50%) */}
+                                <line x1="0" y1="50" x2="100" y2="50" stroke="#1D4046" strokeWidth="1" strokeDasharray="3 3" strokeOpacity="0.12" vectorEffect="non-scaling-stroke" />
+                                <line x1="0" y1="30" x2="100" y2="30" stroke="#1D4046" strokeWidth="1" strokeDasharray="2 2" strokeOpacity="0.04" vectorEffect="non-scaling-stroke" />
+                                <line x1="0" y1="70" x2="100" y2="70" stroke="#1D4046" strokeWidth="1" strokeDasharray="2 2" strokeOpacity="0.04" vectorEffect="non-scaling-stroke" />
+
+                                {/* Static Saffron Area Fill Under Path */}
+                                {timelineScores.length > 0 && (
+                                    <path
+                                        d={`M 0,100 L ${timelineScores.map((s, i) => `${(i / (timelineScores.length - 1)) * 100},${100 - s}`).join(' L ')} L 100,100 Z`}
+                                        fill="url(#timeline-gradient)"
+                                    />
+                                )}
+
+                                {/* Sharp, Thin Gochara Score Path */}
+                                {timelineScores.length > 0 && (
+                                    <path
+                                        d={`M ${timelineScores.map((s, i) => `${(i / (timelineScores.length - 1)) * 100},${100 - s}`).join(' L ')}`}
+                                        fill="none"
+                                        stroke="#F59E0B"
+                                        strokeWidth="1.5"
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        vectorEffect="non-scaling-stroke"
+                                    />
+                                )}
+
+                                {/* Vertical Dash Scrubber Tracker */}
+                                <line
+                                    x1={50 + (scrubDays / 30) * 50}
+                                    y1="0"
+                                    x2={50 + (scrubDays / 30) * 50}
+                                    y2="100"
+                                    stroke="#1D4046"
+                                    strokeWidth="1"
+                                    strokeDasharray="2 2"
+                                    strokeOpacity="0.25"
+                                    vectorEffect="non-scaling-stroke"
+                                />
+
+                                {/* Event Marker Highlights */}
+                                {timelineEvents.map((ev, idx) => {
+                                    const xCoord = 50 + (ev.day / 30) * 50;
+                                    const isActiveDay = ev.day === scrubDays;
+                                    return (
+                                        <g key={idx}>
+                                            <line
+                                                x1={xCoord}
+                                                y1="0"
+                                                x2={xCoord}
+                                                y2="100"
+                                                stroke="#F59E0B"
+                                                strokeWidth={isActiveDay ? "1.5" : "1"}
+                                                strokeDasharray="2"
+                                                strokeOpacity={isActiveDay ? "0.6" : "0.15"}
+                                                vectorEffect="non-scaling-stroke"
+                                            />
+                                        </g>
+                                    );
+                                })}
+                            </svg>
+
+                            {/* Perfectly Synced, Non-Distorted HTML Cursor with glowing shadow */}
+                            <div
+                                className="absolute w-3 h-3 rounded-full bg-white border-2 border-[#F59E0B] shadow-[0_0_8px_#F59E0B] transition-all duration-75 pointer-events-none"
+                                style={{
+                                    left: `calc(${50 + (scrubDays / 30) * 50}% - 6px)`,
+                                    top: `calc(${100 - gocharaScore}% - 6px)`,
+                                }}
+                            />
+                        </div>
+                    </div>
+
+                    {/* Standard Range Input Fallback (for keyboard navigation and precise scrub interaction) */}
+                    <div className="space-y-1">
+                        <input
+                            type="range"
+                            min="-30"
+                            max="30"
+                            value={scrubDays}
+                            onChange={e => setScrubDays(parseInt(e.target.value))}
+                            aria-label="Transit Timeline Scrubber"
+                            aria-valuetext={scrubDays === 0 ? "Current Date" : `${Math.abs(scrubDays)} days ${scrubDays > 0 ? 'forward' : 'back'}`}
+                            className="w-full h-1.5 bg-[#F9F7F1] rounded-lg appearance-none cursor-pointer accent-[#F59E0B] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F59E0B]"
+                        />
+                        <div className="flex justify-between text-[10px] font-bold text-[#1D4046]/40 uppercase tracking-widest select-none">
+                            <span>-30 Days</span>
+                            <span>Today</span>
+                            <span>+30 Days</span>
                         </div>
                     </div>
                 </section>
