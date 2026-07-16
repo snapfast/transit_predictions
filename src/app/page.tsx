@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, KeyboardEvent } from "react";
+import { useState, useEffect, useRef, KeyboardEvent, useMemo } from "react";
 import { calculateTransits, PlanetData, DivisionalChartData, Predictions, DashaInfo, SadeSatiInfo, Remedy, AyanamsaType, AshtakavargaData, getRotatedChart, generatePredictionsFromRasi } from "@/lib/astrology";
 import KundliChart, { ChartStyle } from "@/components/KundliChart";
 import { Clock, MapPin, Calendar, Sun, Moon, Info, Sparkles, User, Navigation, ChevronUp, Settings, Edit2 } from "lucide-react";
@@ -377,6 +377,26 @@ export default function Home() {
     setShowSuggestionsFor(null);
   };
 
+  const activeSignEvents = useMemo(() => timelineEvents.filter(e => e.day === scrubDays), [timelineEvents, scrubDays]);
+
+  const activePlacementsMap = useMemo(() => {
+    const placements = predictionReference === "Moon" ? predictionsMoon.placements : predictionsLagna.placements;
+    const map = new Map<string, string>();
+    for (let i = 0; i < placements.length; i++) {
+        const parts = placements[i].split(': ');
+        if (parts.length >= 2) {
+            const planetName = parts[0].split(' ')[0];
+            map.set(planetName, parts[1]);
+        }
+    }
+    return map;
+  }, [predictionsMoon, predictionsLagna, predictionReference]);
+
+  const timelinePathStr = useMemo(() => {
+    if (timelineScores.length === 0) return "";
+    return timelineScores.map((s, i) => `${(i / (timelineScores.length - 1)) * 100},${100 - s}`).join(' L ');
+  }, [timelineScores]);
+
   return (
     <main className="min-h-screen flex flex-col pb-32 bg-[#F9F7F1] text-[#1D4046] font-sans">
       <div className="flex-1 max-w-7xl mx-auto w-full p-4 md:p-8 space-y-12 relative">
@@ -640,7 +660,7 @@ export default function Home() {
                             <h3 className="font-serif text-lg font-bold">{p.name}</h3>
                             <span className="text-[10px] font-bold bg-[#F9F7F1] px-2 py-1 rounded border border-[#1D4046]/10 uppercase">{p.rasi}</span>
                         </div>
-                        <p className="text-sm text-[#1D4046]/80 leading-relaxed mb-4">{(predictionReference === "Moon" ? predictionsMoon : predictionsLagna).placements.find(pr => pr.startsWith(p.name))?.split(': ')[1] || 'Analyzing transit impact...'}</p>
+                        <p className="text-sm text-[#1D4046]/80 leading-relaxed mb-4">{activePlacementsMap.get(p.name) || 'Analyzing transit impact...'}</p>
                         <div className="flex gap-3">
                             {p.vedha?.isObstructed && <span className="text-[10px] font-bold text-red-600 bg-red-50 px-2 py-0.5 rounded">Vedha: {p.vedha.obstructingPlanet}</span>}
                             {p.isRetrograde && <span className="text-[10px] font-bold text-orange-600 bg-orange-50 px-2 py-0.5 rounded">Retrograde</span>}
@@ -661,7 +681,7 @@ export default function Home() {
                             <h3 className="font-serif text-base font-bold">{p.name}</h3>
                             <span className="text-[10px] font-bold bg-[#F9F7F1] px-2 py-1 rounded border border-[#1D4046]/10 uppercase">{p.rasi}</span>
                         </div>
-                        <p className="text-xs text-[#1D4046]/70 leading-relaxed mb-4 line-clamp-3">{(predictionReference === "Moon" ? predictionsMoon : predictionsLagna).placements.find(pr => pr.startsWith(p.name))?.split(': ')[1] || 'Analyzing transit impact...'}</p>
+                        <p className="text-xs text-[#1D4046]/70 leading-relaxed mb-4 line-clamp-3">{activePlacementsMap.get(p.name) || 'Analyzing transit impact...'}</p>
                         <div className="flex gap-3">
                             {p.vedha?.isObstructed && <span className="text-[10px] font-bold text-gray-400 bg-gray-50 px-2 py-0.5 rounded">Vedha</span>}
                             {p.isRetrograde && <span className="text-[10px] font-bold text-orange-600/60 bg-orange-50 px-2 py-0.5 rounded">Retrograde</span>}
@@ -736,8 +756,8 @@ export default function Home() {
                         <div className="flex flex-col md:items-end justify-center space-y-1">
                             <div className="text-xs font-bold text-[#1D4046]/40 uppercase tracking-widest">Active Sign Transits</div>
                             <div className="flex flex-wrap md:justify-end gap-1.5 max-w-xs">
-                                {timelineEvents.filter(e => e.day === scrubDays).length > 0 ? (
-                                    timelineEvents.filter(e => e.day === scrubDays).map((ev, i) => (
+                                {activeSignEvents.length > 0 ? (
+                                    activeSignEvents.map((ev, i) => (
                                         <span key={i} className="text-[10px] font-bold bg-[#F59E0B] text-white px-2.5 py-1 rounded-full shadow-sm animate-bounce">
                                             {ev.label}
                                         </span>
@@ -786,7 +806,7 @@ export default function Home() {
                                 {/* Static Saffron Area Fill Under Path */}
                                 {timelineScores.length > 0 && (
                                     <path
-                                        d={`M 0,100 L ${timelineScores.map((s, i) => `${(i / (timelineScores.length - 1)) * 100},${100 - s}`).join(' L ')} L 100,100 Z`}
+                                        d={`M 0,100 L ${timelinePathStr} L 100,100 Z`}
                                         fill="url(#timeline-gradient)"
                                     />
                                 )}
@@ -794,7 +814,7 @@ export default function Home() {
                                 {/* Sharp, Thin Gochara Score Path */}
                                 {timelineScores.length > 0 && (
                                     <path
-                                        d={`M ${timelineScores.map((s, i) => `${(i / (timelineScores.length - 1)) * 100},${100 - s}`).join(' L ')}`}
+                                        d={`M ${timelinePathStr}`}
                                         fill="none"
                                         stroke="#F59E0B"
                                         strokeWidth="1.5"
