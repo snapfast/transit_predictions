@@ -388,7 +388,7 @@ export default function Home() {
               <div className="flex flex-wrap items-center gap-6 text-sm">
                 <div className="flex items-center gap-2">
                   <div className="w-8 h-8 rounded-full bg-[#F59E0B]/10 flex items-center justify-center">
-                    <User className="w-4 h-4 text-[#F59E0B]" />
+                    <User aria-hidden="true" className="w-4 h-4 text-[#F59E0B]" />
                   </div>
                   <div>
                     <div className="text-[10px] font-bold text-[#1D4046]/40 uppercase tracking-widest">Natal</div>
@@ -398,7 +398,7 @@ export default function Home() {
                 <div className="hidden md:block h-8 w-px bg-[#1D4046]/10" />
                 <div className="flex items-center gap-2">
                   <div className="w-8 h-8 rounded-full bg-[#1D4046]/10 flex items-center justify-center">
-                    <Navigation className="w-4 h-4 text-[#1D4046]" />
+                    <Navigation aria-hidden="true" className="w-4 h-4 text-[#1D4046]" />
                   </div>
                   <div>
                     <div className="text-[10px] font-bold text-[#1D4046]/40 uppercase tracking-widest">Transit</div>
@@ -410,21 +410,21 @@ export default function Home() {
                 onClick={() => setIsSettingsOpen(true)}
                 className="flex items-center gap-2 px-4 py-2 bg-[#1D4046] text-white rounded-full text-xs font-bold hover:bg-[#1D4046]/90 transition-all shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-[#F9F7F1] focus-visible:ring-[#F59E0B] select-none"
               >
-                <Edit2 className="w-3.5 h-3.5" /> Modify Details
+                <Edit2 aria-hidden="true" className="w-3.5 h-3.5" /> Modify Details
               </button>
             </div>
           ) : (
             <div className="p-6">
               <div className="flex justify-between items-center mb-8 pb-4 border-b border-[#1D4046]/5 select-none">
                 <h2 className="text-2xl font-serif flex items-center gap-3">
-                  <Settings className="w-6 h-6 text-[#F59E0B]" /> Configuration
+                  <Settings aria-hidden="true" className="w-6 h-6 text-[#F59E0B]" /> Configuration
                 </h2>
                 <button
                   onClick={() => setIsSettingsOpen(false)}
                   className="p-2 hover:bg-[#F9F7F1] rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F59E0B] select-none"
                   aria-label="Collapse Settings"
                 >
-                  <ChevronUp className="w-6 h-6" />
+                  <ChevronUp aria-hidden="true" className="w-6 h-6" />
                 </button>
               </div>
 
@@ -435,7 +435,7 @@ export default function Home() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-2 col-span-1 md:col-span-2 relative">
                       <label htmlFor="birthCity" className="text-xs font-bold text-[#1D4046]/40 uppercase flex items-center gap-2 cursor-pointer hover:text-[#1D4046]/60 transition-colors select-none">
-                        <MapPin className="w-3.5 h-3.5"/> City of Birth
+                        <MapPin aria-hidden="true" className="w-3.5 h-3.5"/> City of Birth
                       </label>
                       <div className="relative">
                         <input
@@ -479,11 +479,11 @@ export default function Home() {
                       </div>
                     </div>
                     <div className="space-y-2">
-                      <label htmlFor="birthDate" className="text-xs font-bold text-[#1D4046]/40 uppercase flex items-center gap-2 cursor-pointer hover:text-[#1D4046]/60 transition-colors select-none"><Calendar className="w-3.5 h-3.5"/> Date</label>
+                      <label htmlFor="birthDate" className="text-xs font-bold text-[#1D4046]/40 uppercase flex items-center gap-2 cursor-pointer hover:text-[#1D4046]/60 transition-colors select-none"><Calendar aria-hidden="true" className="w-3.5 h-3.5"/> Date</label>
                       <input id="birthDate" type="date" value={birthDateStr} onChange={e => setBirthDateStr(e.target.value)} className="w-full p-3 bg-[#F9F7F1] border border-[#1D4046]/10 rounded-xl outline-none focus:ring-2 focus:ring-[#F59E0B]/20 transition-all" />
                     </div>
                     <div className="space-y-2">
-                      <label htmlFor="birthTime" className="text-xs font-bold text-[#1D4046]/40 uppercase flex items-center gap-2 cursor-pointer hover:text-[#1D4046]/60 transition-colors select-none"><Clock className="w-3.5 h-3.5"/> Time</label>
+                      <label htmlFor="birthTime" className="text-xs font-bold text-[#1D4046]/40 uppercase flex items-center gap-2 cursor-pointer hover:text-[#1D4046]/60 transition-colors select-none"><Clock aria-hidden="true" className="w-3.5 h-3.5"/> Time</label>
                       <input id="birthTime" type="time" value={birthTimeStr} onChange={e => setBirthTimeStr(e.target.value)} className="w-full p-3 bg-[#F9F7F1] border border-[#1D4046]/10 rounded-xl outline-none focus:ring-2 focus:ring-[#F59E0B]/20 transition-all" />
                     </div>
                   </div>
@@ -495,7 +495,7 @@ export default function Home() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-2 col-span-1 md:col-span-2 relative">
                       <label htmlFor="transitCity" className="text-xs font-bold text-[#1D4046]/40 uppercase flex items-center gap-2 cursor-pointer hover:text-[#1D4046]/60 transition-colors select-none">
-                        <MapPin className="w-3.5 h-3.5"/> Current City
+                        <MapPin aria-hidden="true" className="w-3.5 h-3.5"/> Current City
                       </label>
                       <div className="relative">
                         <input
@@ -539,11 +539,11 @@ export default function Home() {
                       </div>
                     </div>
                     <div className="space-y-2">
-                      <label htmlFor="transitDate" className="text-xs font-bold text-[#1D4046]/40 uppercase flex items-center gap-2 cursor-pointer hover:text-[#1D4046]/60 transition-colors select-none"><Calendar className="w-3.5 h-3.5"/> Date</label>
+                      <label htmlFor="transitDate" className="text-xs font-bold text-[#1D4046]/40 uppercase flex items-center gap-2 cursor-pointer hover:text-[#1D4046]/60 transition-colors select-none"><Calendar aria-hidden="true" className="w-3.5 h-3.5"/> Date</label>
                       <input id="transitDate" type="date" value={transitDateStr} onChange={e => setTransitDateStr(e.target.value)} className="w-full p-3 bg-[#F9F7F1] border border-[#1D4046]/10 rounded-xl outline-none focus:ring-2 focus:ring-[#1D4046]/20 transition-all" />
                     </div>
                     <div className="space-y-2">
-                      <label htmlFor="transitTime" className="text-xs font-bold text-[#1D4046]/40 uppercase flex items-center gap-2 cursor-pointer hover:text-[#1D4046]/60 transition-colors select-none"><Clock className="w-3.5 h-3.5"/> Time</label>
+                      <label htmlFor="transitTime" className="text-xs font-bold text-[#1D4046]/40 uppercase flex items-center gap-2 cursor-pointer hover:text-[#1D4046]/60 transition-colors select-none"><Clock aria-hidden="true" className="w-3.5 h-3.5"/> Time</label>
                       <input id="transitTime" type="time" value={transitTimeStr} onChange={e => setTransitTimeStr(e.target.value)} className="w-full p-3 bg-[#F9F7F1] border border-[#1D4046]/10 rounded-xl outline-none focus:ring-2 focus:ring-[#1D4046]/20 transition-all" />
                     </div>
                   </div>
@@ -673,7 +673,7 @@ export default function Home() {
 
             {(predictionReference === "Moon" ? predictionsMoon : predictionsLagna).yogas.length > 0 && (
                 <section className="bg-[#1D4046] p-8 rounded-3xl text-white shadow-lg">
-                    <h2 className="text-2xl font-serif mb-6 flex items-center gap-2 select-none"><Sparkles className="text-[#F59E0B]"/> Active Planetary Yogas</h2>
+                    <h2 className="text-2xl font-serif mb-6 flex items-center gap-2 select-none"><Sparkles aria-hidden="true" className="text-[#F59E0B]"/> Active Planetary Yogas</h2>
                     <div className="grid md:grid-cols-2 gap-4">
                         {(predictionReference === "Moon" ? predictionsMoon : predictionsLagna).yogas.map((y, i) => {
                             const [title, desc] = y.split(': ');
