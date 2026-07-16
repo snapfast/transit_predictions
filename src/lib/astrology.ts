@@ -435,54 +435,73 @@ export function calculateSadeSati(natalMoonLongitude: number, transitSaturnLongi
     return { isActive: false, phase: 'None' };
 }
 
-export function generatePredictions(planets: PlanetData[], refPlanetName: "Moon" | "Ascendant" = "Moon"): Predictions {
+export function getRotatedChart(planets: PlanetData[], refRasiIdx: number): DivisionalChartData {
+    const chart: DivisionalChartData = { houses: {}, houseRasis: {} };
+    for (let i = 1; i <= 12; i++) {
+        chart.houses[i] = [];
+        chart.houseRasis[i] = (refRasiIdx + i - 1) % 12 + 1;
+    }
+    for (let i = 0; i < planets.length; i++) {
+        const p = planets[i];
+        const pRasiIdx = RASI_INDEX_MAP[p.rasi] ?? RASIS.indexOf(p.rasi);
+        const house = (pRasiIdx - refRasiIdx + 12) % 12 + 1;
+        if (house >= 1 && house <= 12) {
+            chart.houses[house].push({ symbol: p.symbol, isRetrograde: p.isRetrograde });
+        }
+    }
+    return chart;
+}
+
+export function generatePredictionsFromRasi(planets: PlanetData[], refRasiIdx: number, refName: string): Predictions {
     const placements: string[] = [];
     const aspects: string[] = [];
     const yogas: string[] = [];
 
-    const refPlanet = planets.find(p => p.name === refPlanetName);
-    if (!refPlanet) return { placements, aspects, yogas };
-
-    const refRasiIdx = RASI_INDEX_MAP[refPlanet.rasi] ?? RASIS.indexOf(refPlanet.rasi);
     const getHouseFromRef = (rasi: string) => ((RASI_INDEX_MAP[rasi] ?? RASIS.indexOf(rasi)) - refRasiIdx + 12) % 12 + 1;
 
     for (let i = 0; i < planets.length; i++) {
         const p = planets[i];
         const n = p.name;
-        if (n === "Ascendant" || n === "Gulika" || n === "Mandi") continue;
+        if (n === "Ascendant" || n === "Gulika" || n === "Mandi" || n === "Dhuma" || n === "Vyatipata" || n === "Parivesha" || n === "Indrachapa" || n === "Upaketu" || n === "Kala" || n === "Mrityu" || n === "Ardhaprahara" || n === "Yamaghantaka") continue;
         const h = getHouseFromRef(p.rasi);
         const status = p.vedha?.isObstructed ? ` (Obstructed by ${p.vedha.obstructingPlanet})` : "";
-        placements.push(`${n} in House ${h} from ${refPlanetName}: ${getHouseTheme(h)}${status}`);
+        placements.push(`${n} in House ${h} from ${refName}: ${getHouseTheme(h)}${status}`);
 
-        // Bolt Optimization: Replace inline `.includes` with boolean checks
         if (n === "Sun" || n === "Moon" || n === "Mercury" || n === "Venus") {
-            aspects.push(`${n} aspects House ${(h + 6) % 12 || 12} from ${refPlanetName}.`);
+            aspects.push(`${n} aspects House ${(h + 6) % 12 || 12} from ${refName}.`);
         } else if (n === "Mars") {
-            aspects.push(`Mars aspects Houses ${(h + 3) % 12 || 12}, ${(h + 6) % 12 || 12}, and ${(h + 7) % 12 || 12} from ${refPlanetName}.`);
+            aspects.push(`Mars aspects Houses ${(h + 3) % 12 || 12}, ${(h + 6) % 12 || 12}, and ${(h + 7) % 12 || 12} from ${refName}.`);
         } else if (n === "Jupiter" || n === "Rahu" || n === "Ketu") {
-            aspects.push(`${n} aspects Houses ${(h + 4) % 12 || 12}, ${(h + 6) % 12 || 12}, and ${(h + 8) % 12 || 12} from ${refPlanetName}.`);
+            aspects.push(`${n} aspects Houses ${(h + 4) % 12 || 12}, ${(h + 6) % 12 || 12}, and ${(h + 8) % 12 || 12} from ${refName}.`);
         } else if (n === "Saturn") {
-            aspects.push(`Saturn aspects Houses ${(h + 2) % 12 || 12}, ${(h + 6) % 12 || 12}, and ${(h + 9) % 12 || 12} from ${refPlanetName}.`);
+            aspects.push(`Saturn aspects Houses ${(h + 2) % 12 || 12}, ${(h + 6) % 12 || 12}, and ${(h + 9) % 12 || 12} from ${refName}.`);
         }
     }
 
     const getP = (name: string) => planets.find(p => p.name === name);
     const jup = getP("Jupiter"), merc = getP("Mercury"), sun = getP("Sun"), ven = getP("Venus"), mars = getP("Mars");
 
-    if (jup && refPlanet && ((RASI_INDEX_MAP[jup.rasi] ?? RASIS.indexOf(jup.rasi)) - refRasiIdx + 12) % 3 === 0) {
-        yogas.push(`Gaja Kesari Yoga: Jupiter is in a quadrant from ${refPlanetName}. Brings wealth, intelligence, and lasting fame.`);
+    if (jup && ((RASI_INDEX_MAP[jup.rasi] ?? RASIS.indexOf(jup.rasi)) - refRasiIdx + 12) % 3 === 0) {
+        yogas.push(`Gaja Kesari Yoga: Jupiter is in a quadrant from ${refName}. Brings wealth, intelligence, and lasting fame.`);
     }
     if (sun && merc && sun.rasi === merc.rasi) {
         yogas.push("Budha Aditya Yoga: Sun and Mercury conjunction. Enhances success and intellect.");
     }
-    if (ven && refPlanet && ((RASI_INDEX_MAP[ven.rasi] ?? RASIS.indexOf(ven.rasi)) - refRasiIdx + 12) % 12 === 0) {
-        yogas.push(`Malavya Yoga tendencies: Strong Venus influence on ${refPlanetName}. Artistic talents and comforts.`);
+    if (ven && ((RASI_INDEX_MAP[ven.rasi] ?? RASIS.indexOf(ven.rasi)) - refRasiIdx + 12) % 12 === 0) {
+        yogas.push(`Malavya Yoga tendencies: Strong Venus influence on ${refName}. Artistic talents and comforts.`);
     }
     if (mars && jup && mars.rasi === jup.rasi) {
         yogas.push("Guru Mangala Yoga: Mars and Jupiter conjunction. Drive for leadership.");
     }
 
     return { placements, aspects, yogas };
+}
+
+export function generatePredictions(planets: PlanetData[], refPlanetName: "Moon" | "Ascendant" = "Moon"): Predictions {
+    const refPlanet = planets.find(p => p.name === refPlanetName);
+    if (!refPlanet) return { placements: [], aspects: [], yogas: [] };
+    const refRasiIdx = RASI_INDEX_MAP[refPlanet.rasi] ?? RASIS.indexOf(refPlanet.rasi);
+    return generatePredictionsFromRasi(planets, refRasiIdx, refPlanetName);
 }
 
 const HOUSE_THEMES: { [key: number]: string } = {
