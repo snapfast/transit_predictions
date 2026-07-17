@@ -21,14 +21,14 @@ const KundliChartComponent: FC<KundliChartProps> = ({ data, style = 'North' }) =
   if (style === 'South') {
     return (
         <svg role="img" aria-label="South Indian Style Astrological Chart" viewBox="0 0 400 400" className="w-full aspect-square max-w-[500px] mx-auto relative p-4 bg-[#F9F7F1] rounded-lg shadow-sm border border-[#1D4046]/20 select-none">
-            <rect x="0" y="0" width="400" height="400" fill="none" stroke="#1D4046" strokeWidth="1.5" vectorEffect="non-scaling-stroke" />
-            <line x1="100" y1="0" x2="100" y2="400" stroke="#1D4046" strokeWidth="1" strokeOpacity="0.3" vectorEffect="non-scaling-stroke" />
-            <line x1="200" y1="0" x2="200" y2="400" stroke="#1D4046" strokeWidth="1" strokeOpacity="0.3" vectorEffect="non-scaling-stroke" />
-            <line x1="300" y1="0" x2="300" y2="400" stroke="#1D4046" strokeWidth="1" strokeOpacity="0.3" vectorEffect="non-scaling-stroke" />
-            <line x1="0" y1="100" x2="400" y2="100" stroke="#1D4046" strokeWidth="1" strokeOpacity="0.3" vectorEffect="non-scaling-stroke" />
-            <line x1="0" y1="200" x2="400" y2="200" stroke="#1D4046" strokeWidth="1" strokeOpacity="0.3" vectorEffect="non-scaling-stroke" />
-            <line x1="0" y1="300" x2="400" y2="300" stroke="#1D4046" strokeWidth="1" strokeOpacity="0.3" vectorEffect="non-scaling-stroke" />
-            <rect x="100" y="100" width="200" height="200" fill="#F59E0B" fillOpacity="0.05" stroke="#1D4046" strokeWidth="1" strokeOpacity="0.3" vectorEffect="non-scaling-stroke" />
+            <rect x="0" y="0" width="400" height="400" fill="none" stroke="#1D4046" strokeWidth="1.5" />
+            <line x1="100" y1="0" x2="100" y2="400" stroke="#1D4046" strokeWidth="1" strokeOpacity="0.3" />
+            <line x1="200" y1="0" x2="200" y2="400" stroke="#1D4046" strokeWidth="1" strokeOpacity="0.3" />
+            <line x1="300" y1="0" x2="300" y2="400" stroke="#1D4046" strokeWidth="1" strokeOpacity="0.3" />
+            <line x1="0" y1="100" x2="400" y2="100" stroke="#1D4046" strokeWidth="1" strokeOpacity="0.3" />
+            <line x1="0" y1="200" x2="400" y2="200" stroke="#1D4046" strokeWidth="1" strokeOpacity="0.3" />
+            <line x1="0" y1="300" x2="400" y2="300" stroke="#1D4046" strokeWidth="1" strokeOpacity="0.3" />
+            <rect x="100" y="100" width="200" height="200" fill="#F59E0B" fillOpacity="0.05" stroke="#1D4046" strokeWidth="1" strokeOpacity="0.3" />
 
             {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(rasiIdx => {
                 const houseNum = Object.keys(houseRasis).find(k => houseRasis[Number(k)] === rasiIdx);
@@ -51,13 +51,13 @@ const KundliChartComponent: FC<KundliChartProps> = ({ data, style = 'North' }) =
 
   return (
     <svg role="img" aria-label="North Indian Style Astrological Chart" viewBox="0 0 400 400" className="w-full aspect-square max-w-[500px] mx-auto relative p-4 bg-[#F9F7F1] rounded-lg shadow-sm border border-[#1D4046]/20 select-none">
-      <rect x="0" y="0" width="400" height="400" fill="none" stroke="#1D4046" strokeWidth="1.5" vectorEffect="non-scaling-stroke" />
-      <line x1="0" y1="0" x2="400" y2="400" stroke="#1D4046" strokeWidth="1" strokeOpacity="0.5" vectorEffect="non-scaling-stroke" />
-      <line x1="400" y1="0" x2="0" y2="400" stroke="#1D4046" strokeWidth="1" strokeOpacity="0.5" vectorEffect="non-scaling-stroke" />
-      <line x1="200" y1="0" x2="400" y2="200" stroke="#1D4046" strokeWidth="1" strokeOpacity="0.5" vectorEffect="non-scaling-stroke" />
-      <line x1="400" y1="200" x2="200" y2="400" stroke="#1D4046" strokeWidth="1" strokeOpacity="0.5" vectorEffect="non-scaling-stroke" />
-      <line x1="200" y1="400" x2="0" y2="200" stroke="#1D4046" strokeWidth="1" strokeOpacity="0.5" vectorEffect="non-scaling-stroke" />
-      <line x1="0" y1="200" x2="200" y2="0" stroke="#1D4046" strokeWidth="1" strokeOpacity="0.5" vectorEffect="non-scaling-stroke" />
+      <rect x="0" y="0" width="400" height="400" fill="none" stroke="#1D4046" strokeWidth="1.5" />
+      <line x1="0" y1="0" x2="400" y2="400" stroke="#1D4046" strokeWidth="1" strokeOpacity="0.5" />
+      <line x1="400" y1="0" x2="0" y2="400" stroke="#1D4046" strokeWidth="1" strokeOpacity="0.5" />
+      <line x1="200" y1="0" x2="400" y2="200" stroke="#1D4046" strokeWidth="1" strokeOpacity="0.5" />
+      <line x1="400" y1="200" x2="200" y2="400" stroke="#1D4046" strokeWidth="1" strokeOpacity="0.5" />
+      <line x1="200" y1="400" x2="0" y2="200" stroke="#1D4046" strokeWidth="1" strokeOpacity="0.5" />
+      <line x1="0" y1="200" x2="200" y2="0" stroke="#1D4046" strokeWidth="1" strokeOpacity="0.5" />
 
       {NORTH_HOUSE_COORDINATES.slice(1).map((coords, index) => {
         const houseNum = index + 1;
