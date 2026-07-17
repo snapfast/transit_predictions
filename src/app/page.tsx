@@ -1295,7 +1295,14 @@ export default function Home() {
 
                                     {/* Progress Bar Container */}
                                     <div className="space-y-2">
-                                        <div className="h-2.5 w-full bg-[#F9F7F1] rounded-full overflow-hidden border border-[#1D4046]/5 relative">
+                                        <div
+                                            className="h-2.5 w-full bg-[#F9F7F1] rounded-full overflow-hidden border border-[#1D4046]/5 relative"
+                                            role="progressbar"
+                                            aria-label={`${level.label} Progress`}
+                                            aria-valuenow={Math.round(percentage)}
+                                            aria-valuemin={0}
+                                            aria-valuemax={100}
+                                        >
                                             <div
                                                 className={`h-full ${level.color} transition-all duration-500 rounded-full`}
                                                 style={{ width: `${percentage}%` }}
