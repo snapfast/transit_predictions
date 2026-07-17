@@ -8,6 +8,29 @@ import { Clock, MapPin, Calendar, Sun, Info, Sparkles, User, Navigation, Chevron
 interface Suggestion { name: string; lat: string; lon: string; }
 const SUGGESTIONS_CACHE = new Map<string, Suggestion[]>();
 
+const getDurationString = (start: Date, end: Date) => {
+  let years = end.getFullYear() - start.getFullYear();
+  let months = end.getMonth() - start.getMonth();
+  let days = end.getDate() - start.getDate();
+
+  if (days < 0) {
+    months--;
+    // Approximate days in previous month
+    const prevMonth = new Date(end.getFullYear(), end.getMonth(), 0);
+    days += prevMonth.getDate();
+  }
+  if (months < 0) {
+    years--;
+    months += 12;
+  }
+
+  const parts = [];
+  if (years > 0) parts.push(`${years} ${years === 1 ? 'yr' : 'yrs'}`);
+  if (months > 0) parts.push(`${months} ${months === 1 ? 'mo' : 'mos'}`);
+  if (days > 0 || parts.length === 0) parts.push(`${days} ${days === 1 ? 'day' : 'days'}`);
+  return parts.join(", ");
+};
+
 export default function Home() {
   // Birth Profile State
   const [birthDateStr, setBirthDateStr] = useState<string>("");
@@ -100,6 +123,14 @@ export default function Home() {
   const [scrubDays, setScrubDays] = useState<number>(0);
   const [isInitialized, setIsInitialized] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(true);
+
+  const getActiveTransitDate = () => {
+    if (!transitDateStr || !transitTimeStr) return new Date();
+    const [ty, tm, td] = transitDateStr.split('-').map(Number);
+    const [th, tmin] = transitTimeStr.split(':').map(Number);
+    const base = new Date(ty, tm - 1, td, th, tmin);
+    return new Date(base.getTime() + scrubDays * 24 * 60 * 60 * 1000);
+  };
 
   // Load from local storage and set initial transit time
   useEffect(() => {
@@ -606,18 +637,20 @@ export default function Home() {
                 </div>
 
                 {dasha && (
-                  <div className="mt-12 w-full max-w-md">
+                  <div className="mt-12 w-full max-w-md select-none">
                     <div className="flex items-center gap-4 mb-4">
                       <div className="h-px flex-1 bg-gradient-to-r from-transparent to-[#1D4046]/10" />
                       <span className="text-[10px] font-bold text-[#1D4046]/30 uppercase tracking-[0.2em]">Active Influence</span>
                       <div className="h-px flex-1 bg-gradient-to-l from-transparent to-[#1D4046]/10" />
                     </div>
-                    <div className="text-2xl text-[#1D4046] font-serif text-center">
-                      <span className="text-[#F59E0B]">{dasha.mahadasha.lord}</span>
-                      <span className="mx-2 text-[#1D4046]/20">/</span>
-                      <span>{dasha.antardasha.lord}</span>
-                      <span className="mx-2 text-[#1D4046]/20">/</span>
-                      <span className="text-sm opacity-60">{dasha.pratyantardasha.lord}</span>
+                    <div className="text-2xl text-[#1D4046] font-serif text-center flex flex-wrap justify-center items-center gap-1">
+                      <span className="text-[#F59E0B]" title="Mahadasha">{dasha.mahadasha.lord}</span>
+                      <span className="text-[#1D4046]/20">/</span>
+                      <span title="Antardasha">{dasha.antardasha.lord}</span>
+                      <span className="text-[#1D4046]/20">/</span>
+                      <span className="text-sm text-[#1D4046]/80" title="Pratyantardasha">{dasha.pratyantardasha.lord}</span>
+                      <span className="text-[#1D4046]/20">/</span>
+                      <span className="text-xs text-teal-600 font-sans" title="Sookshma Dasha">{dasha.sookshmadasha.lord}</span>
                     </div>
                   </div>
                 )}
@@ -902,29 +935,85 @@ export default function Home() {
               <div className="h-px w-8 bg-[#1D4046]/20" /> Active Dasha Periods
             </h2>
             {dasha && (
-                <section className="bg-white p-8 rounded-[2rem] border border-[#1D4046]/10 shadow-sm space-y-10">
-                    {[
-                      { label: "Mahadasha", value: dasha.mahadasha, color: "bg-[#F59E0B]" },
-                      { label: "Antardasha", value: dasha.antardasha, color: "bg-[#1D4046]" },
-                      { label: "Pratyantardasha", value: dasha.pratyantardasha, color: "bg-green-600" }
-                    ].map((level, idx) => (
-                        <div key={level.label}>
-                            <div className="flex justify-between items-end mb-3">
-                                <div className="text-xs font-bold text-[#1D4046]/40 uppercase tracking-widest">
-                                  {level.label}: <span className={level.label === "Mahadasha" ? "text-[#F59E0B]" : "text-[#1D4046]"}>{level.value.lord}</span>
+                <section className="bg-white p-8 rounded-[2rem] border border-[#1D4046]/10 shadow-sm space-y-8 select-none">
+                    {(() => {
+                        const activeDate = getActiveTransitDate();
+                        const activeTime = activeDate.getTime();
+
+                        return [
+                          { label: "Mahadasha", value: dasha.mahadasha, color: "bg-[#F59E0B]", textColor: "text-[#F59E0B]" },
+                          { label: "Antardasha", value: dasha.antardasha, color: "bg-[#1D4046]", textColor: "text-[#1D4046]" },
+                          { label: "Pratyantardasha", value: dasha.pratyantardasha, color: "bg-green-600", textColor: "text-green-600" },
+                          { label: "Sookshma Dasha", value: dasha.sookshmadasha, color: "bg-teal-500", textColor: "text-teal-600" }
+                        ].map((level) => {
+                            const start = new Date(level.value.start);
+                            const end = new Date(level.value.end);
+                            const startTime = start.getTime();
+                            const endTime = end.getTime();
+                            const totalDuration = endTime - startTime;
+                            const elapsed = activeTime - startTime;
+
+                            // Calculate percentage
+                            let percentage = 0;
+                            if (totalDuration > 0) {
+                                percentage = Math.min(100, Math.max(0, (elapsed / totalDuration) * 100));
+                            }
+
+                            // Status badge
+                            let status = "Upcoming";
+                            let statusBg = "bg-[#1D4046]/5 text-[#1D4046]/50";
+                            if (activeTime >= startTime && activeTime <= endTime) {
+                                status = "Active";
+                                statusBg = "bg-green-100 text-green-800 border border-green-200";
+                            } else if (activeTime > endTime) {
+                                status = "Completed";
+                                statusBg = "bg-gray-100 text-gray-500";
+                            }
+
+                            // Duration calculations
+                            const totalStr = getDurationString(start, end);
+                            const elapsedStr = activeTime > startTime ? getDurationString(start, activeTime > endTime ? end : activeDate) : "0 days";
+                            const remainingStr = endTime > activeTime ? getDurationString(activeTime > startTime ? activeDate : start, end) : "0 days";
+
+                            return (
+                                <div key={level.label} className="p-6 rounded-2xl border border-[#1D4046]/5 bg-[#F9F7F1]/30 hover:bg-[#F9F7F1]/50 transition-all">
+                                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
+                                        <div>
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-xs font-bold text-[#1D4046]/40 uppercase tracking-widest">{level.label}</span>
+                                                <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider ${statusBg}`}>{status}</span>
+                                            </div>
+                                            <h3 className="text-2xl font-serif font-bold text-[#1D4046] mt-1">
+                                                <span className={level.textColor}>{level.value.lord}</span> Period
+                                            </h3>
+                                        </div>
+                                        <div className="text-left md:text-right text-xs text-[#1D4046]/60">
+                                            <div><span className="font-bold">Range:</span> {start.toLocaleDateString()} &mdash; {end.toLocaleDateString()}</div>
+                                            <div className="mt-1 font-medium text-[#1D4046]/40">Total: {totalStr}</div>
+                                        </div>
+                                    </div>
+
+                                    {/* Progress Bar Container */}
+                                    <div className="space-y-2">
+                                        <div className="h-2.5 w-full bg-[#F9F7F1] rounded-full overflow-hidden border border-[#1D4046]/5 relative">
+                                            <div
+                                                className={`h-full ${level.color} transition-all duration-500 rounded-full`}
+                                                style={{ width: `${percentage}%` }}
+                                            />
+                                        </div>
+                                        <div className="flex justify-between text-[11px] font-medium text-[#1D4046]/60">
+                                            <div>
+                                                <span className="text-[#1D4046]/40">Elapsed:</span> {elapsedStr} ({percentage.toFixed(1)}%)
+                                            </div>
+                                            <div>
+                                                <span className="text-[#1D4046]/40">Remaining:</span> {remainingStr}
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
-                                <div className="text-xs text-[#1D4046]/40 font-bold">
-                                  Ends {new Date(level.value.end).toLocaleDateString()}
-                                </div>
-                            </div>
-                            <div className="h-1.5 w-full bg-[#F9F7F1] rounded-full overflow-hidden">
-                              <div
-                                className={`h-full ${level.color} transition-all duration-1000`}
-                                style={{ width: `${(idx + 1) * 25}%` }}
-                              />
-                            </div>
-                        </div>
-                    ))}
+                            );
+                        });
+                    })()}
                 </section>
             )}
 
