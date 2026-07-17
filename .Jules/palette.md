@@ -22,3 +22,6 @@
 ## 2026-07-06 - [Decorative Icon Accessibility]
 **Learning:** Decorative icons (like those from `lucide-react`) placed inside interactive elements (buttons, labels) or headings can sometimes cause redundant or confusing announcements by screen readers if they are not explicitly hidden from the accessibility tree, even if they have some default attributes or depend on the parent's context.
 **Action:** Always add `aria-hidden="true"` to SVG icons that are purely decorative, especially when they accompany text that already provides the full context within an interactive control or heading.
+## 2024-05-24 - Semantic Progress Bars
+**Learning:** Visual progress bars implemented with `div` width styling are completely invisible to screen readers unless explicitly marked up with WAI-ARIA roles.
+**Action:** Always add `role="progressbar"`, `aria-valuenow`, `aria-valuemin`, `aria-valuemax`, and a descriptive `aria-label` to custom HTML progress indicators to ensure they are perceivable by all users.
