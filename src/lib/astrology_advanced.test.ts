@@ -23,6 +23,20 @@ test("Advanced Jyotish Logic: Ashtakavarga and Vedha", async (t) => {
         assert.ok(Array.isArray(result.predictionsMoon.yogas), "Yogas should be an array");
     });
 
+    await t.test("Combined predictions are synthesized and validated", () => {
+        const combined = result.predictionsMoon.combined;
+        assert.ok(Array.isArray(combined), "Combined predictions should be an array");
+        assert.ok(combined.length >= 3, `Should generate at least 3 combined predictions, got ${combined.length}`);
+
+        for (const pred of combined) {
+            assert.ok(pred.title, "Prediction should have a title");
+            assert.ok(pred.description, "Prediction should have a description");
+            assert.ok(pred.type, "Prediction should have a type");
+            assert.ok(Array.isArray(pred.contributors), "Prediction should have a contributors array");
+            assert.ok(pred.description.includes("Brihat Parashara") || pred.description.includes("Phaladeepika") || pred.description.includes("Jataka Parijata"), "Should draw predictions from classical texts");
+        }
+    });
+
     await t.test("Upgrahas (Shadow Planets) are calculated", () => {
         assert.ok(result.upgrahas, "Upgrahas should be present");
         assert.strictEqual(result.upgrahas.length, 11, "There should be exactly 11 Upgrahas");

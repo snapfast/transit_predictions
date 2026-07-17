@@ -72,8 +72,8 @@ export default function Home() {
   const [chartData, setChartData] = useState<DivisionalChartData | null>(null);
   const [d9Data, setD9Data] = useState<DivisionalChartData | null>(null);
   const [d60Data, setD60Data] = useState<DivisionalChartData | null>(null);
-  const [predictionsMoon, setPredictionsMoon] = useState<Predictions>({ placements: [], aspects: [], yogas: [] });
-  const [predictionsLagna, setPredictionsLagna] = useState<Predictions>({ placements: [], aspects: [], yogas: [] });
+  const [predictionsMoon, setPredictionsMoon] = useState<Predictions>({ placements: [], aspects: [], yogas: [], combined: [] });
+  const [predictionsLagna, setPredictionsLagna] = useState<Predictions>({ placements: [], aspects: [], yogas: [], combined: [] });
   const [dasha, setDasha] = useState<DashaInfo | undefined>(undefined);
   const [sadeSati, setSadeSati] = useState<SadeSatiInfo | undefined>(undefined);
   const [natalChart, setNatalChart] = useState<DivisionalChartData | null>(null);
@@ -796,6 +796,47 @@ export default function Home() {
                 </div>
               </div>
             </header>
+
+            {/* Combined & Synthesized Predictions */}
+            <div className="space-y-6">
+              <h2 className="text-xs font-bold text-[#1D4046]/60 uppercase tracking-[0.3em] flex items-center gap-3 select-none">
+                <div className="h-px w-8 bg-[#F59E0B]/40" /> Combined & Synthesized Insights
+              </h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                {(predictionReference === "Moon" ? predictionsMoon : predictionsLagna).combined?.map((pred, i) => (
+                  <div key={i} className="bg-white p-8 rounded-[2.5rem] border border-[#1D4046]/10 shadow-sm hover:shadow-md transition-all border-t-4 border-t-[#F59E0B] flex flex-col justify-between">
+                    <div>
+                      <div className="flex flex-wrap items-center justify-between gap-2 mb-4 select-none">
+                        <span className={`text-[10px] font-bold tracking-widest uppercase px-3 py-1 rounded-full border ${
+                          pred.type === "Career & Ambition" ? "bg-blue-50 text-blue-700 border-blue-100" :
+                          pred.type === "Relationship & Social" ? "bg-pink-50 text-pink-700 border-pink-100" :
+                          pred.type === "Financial & Fortune" ? "bg-amber-50 text-amber-700 border-amber-100" :
+                          pred.type === "Health & Vitality" ? "bg-emerald-50 text-emerald-700 border-emerald-100" :
+                          "bg-purple-50 text-purple-700 border-purple-100"
+                        }`}>
+                          {pred.type}
+                        </span>
+                      </div>
+                      <h3 className="font-serif text-2xl font-bold text-[#1D4046] mb-4">{pred.title}</h3>
+                      <p className="text-sm text-[#1D4046]/80 leading-relaxed mb-6">{pred.description}</p>
+                    </div>
+
+                    {pred.contributors.length > 0 && (
+                      <div className="pt-4 border-t border-[#1D4046]/5">
+                        <div className="text-[10px] font-bold text-[#1D4046]/40 uppercase tracking-wider mb-2 select-none">Astrological Contributors</div>
+                        <div className="flex flex-wrap gap-1.5">
+                          {pred.contributors.map((contrib, cIdx) => (
+                            <span key={cIdx} className="bg-[#1D4046]/5 px-2.5 py-1 text-[10px] font-bold text-[#1D4046]/70 rounded-full select-none">
+                              {contrib}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
 
             <div className="space-y-6">
               <h2 className="text-xs font-bold text-[#1D4046]/60 uppercase tracking-[0.3em] flex items-center gap-3 select-none">
