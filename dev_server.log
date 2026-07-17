@@ -5,8 +5,9 @@
 ▲ Next.js 16.2.9 (Turbopack)
 - Local:         http://localhost:3000
 - Network:       http://192.168.0.2:3000
-✓ Ready in 580ms
+✓ Ready in 742ms
 
-○ Compiling / ...
- GET / 200 in 4.9s (next.js: 4.3s, application-code: 590ms)
- GET / 200 in 76ms (next.js: 6ms, application-code: 70ms)
+ GET / 200 in 3.3s (next.js: 3.0s, application-code: 309ms)
+ GET / 200 in 133ms (next.js: 11ms, application-code: 122ms)
+ ELIFECYCLE  Command failed.
+[?25h

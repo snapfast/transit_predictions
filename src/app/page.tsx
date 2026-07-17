@@ -31,6 +31,59 @@ export default function Home() {
   const suggestionRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
 
+  // Browser Geolocation / Auto-Detect Current Location
+  const [isDetectingLocation, setIsDetectingLocation] = useState<"birth" | "transit" | null>(null);
+
+  const handleUseCurrentLocation = (field: "birth" | "transit") => {
+    if (!navigator.geolocation) {
+      alert("Geolocation is not supported by your browser.");
+      return;
+    }
+    setIsDetectingLocation(field);
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const { latitude, longitude } = position.coords;
+        try {
+          const res = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=10`,
+            { headers: { 'User-Agent': 'VedicTransitApp/1.0' } }
+          );
+          const data = await res.json();
+          const displayName = data.display_name || `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
+          if (field === "birth") {
+            setBirthPob(displayName);
+            setBirthLat(latitude);
+            setBirthLon(longitude);
+          } else {
+            setTransitPob(displayName);
+            setTransitLat(latitude);
+            setTransitLon(longitude);
+          }
+        } catch (err) {
+          console.error("Error reverse-geocoding location:", err);
+          const fallbackName = `Detected Coordinates (${latitude.toFixed(4)}, ${longitude.toFixed(4)})`;
+          if (field === "birth") {
+            setBirthPob(fallbackName);
+            setBirthLat(latitude);
+            setBirthLon(longitude);
+          } else {
+            setTransitPob(fallbackName);
+            setTransitLat(latitude);
+            setTransitLon(longitude);
+          }
+        } finally {
+          setIsDetectingLocation(null);
+        }
+      },
+      (error) => {
+        console.error("Geolocation error:", error);
+        alert(`Failed to get position: ${error.message}`);
+        setIsDetectingLocation(null);
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  };
+
   // Helper to calculate the scrubbed date string dynamically
   const getScrubbedDateStr = () => {
     if (!transitDateStr || !transitTimeStr) return "";
@@ -100,6 +153,7 @@ export default function Home() {
   const [scrubDays, setScrubDays] = useState<number>(0);
   const [isInitialized, setIsInitialized] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(true);
+  const [hoveredEvent, setHoveredEvent] = useState<null | { day: number; label: string; score: number; percentX: number; percentY: number }>(null);
 
   // Load from local storage and set initial transit time
   useEffect(() => {
@@ -385,8 +439,22 @@ export default function Home() {
   }, [timelineScores]);
 
   return (
-    <main className="min-h-screen flex flex-col pb-32 bg-[#F9F7F1] text-[#1D4046] font-sans">
+    <main className="min-h-screen flex flex-col pb-32 bg-[#F9F7F1] text-[#1D4046] font-sans relative">
+      {/* Decorative Traditional Border Motif */}
+      <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-[#F59E0B] via-[#e28743] to-[#F59E0B] opacity-80" />
+
       <div className="flex-1 max-w-7xl mx-auto w-full p-4 md:p-8 space-y-12 relative">
+
+        {/* Classical Logo and Header Title */}
+        <div className="text-center space-y-2 py-4 select-none">
+          <div className="flex justify-center items-center gap-3">
+            <span className="w-8 h-px bg-gradient-to-r from-transparent to-[#F59E0B]" />
+            <span className="text-xs tracking-[0.4em] text-[#F59E0B] font-bold uppercase">Jyotisha Gochara</span>
+            <span className="w-8 h-px bg-gradient-to-l from-transparent to-[#F59E0B]" />
+          </div>
+          <h1 className="text-4xl md:text-5xl font-serif text-[#1D4046] tracking-wide">Vedic Transits</h1>
+          <p className="text-xs text-[#1D4046]/60 italic font-serif">Classical Panchanga-aligned calculations for your destiny</p>
+        </div>
 
         {/* Global Input Section (Collapsible) */}
         <section className="bg-white rounded-3xl shadow-sm border border-[#1D4046]/10 overflow-hidden transition-all duration-500 ease-in-out" ref={suggestionRef}>
@@ -441,9 +509,18 @@ export default function Home() {
                   <h3 className="text-sm font-bold text-[#F59E0B] uppercase tracking-[0.2em]">Birth Details</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-2 col-span-1 md:col-span-2 relative">
-                      <label htmlFor="birthCity" className="text-xs font-bold text-[#1D4046]/40 uppercase flex items-center gap-2 cursor-pointer hover:text-[#1D4046]/60 transition-colors select-none">
-                        <MapPin aria-hidden="true" className="w-3.5 h-3.5"/> City of Birth
-                      </label>
+                      <div className="flex justify-between items-center">
+                        <label htmlFor="birthCity" className="text-xs font-bold text-[#1D4046]/40 uppercase flex items-center gap-2 cursor-pointer hover:text-[#1D4046]/60 transition-colors select-none">
+                          <MapPin aria-hidden="true" className="w-3.5 h-3.5"/> City of Birth
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => handleUseCurrentLocation("birth")}
+                          className="text-[10px] font-bold text-[#F59E0B] hover:text-[#F59E0B]/80 transition-colors flex items-center gap-1 focus-visible:outline-none focus-visible:underline select-none"
+                        >
+                          {isDetectingLocation === "birth" ? "Detecting..." : "Use My Location"}
+                        </button>
+                      </div>
                       <div className="relative">
                         <input
                           id="birthCity"
@@ -501,9 +578,18 @@ export default function Home() {
                    <h3 className="text-sm font-bold text-[#1D4046]/40 uppercase tracking-[0.2em]">Transit Parameters</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-2 col-span-1 md:col-span-2 relative">
-                      <label htmlFor="transitCity" className="text-xs font-bold text-[#1D4046]/40 uppercase flex items-center gap-2 cursor-pointer hover:text-[#1D4046]/60 transition-colors select-none">
-                        <MapPin aria-hidden="true" className="w-3.5 h-3.5"/> Current City
-                      </label>
+                      <div className="flex justify-between items-center">
+                        <label htmlFor="transitCity" className="text-xs font-bold text-[#1D4046]/40 uppercase flex items-center gap-2 cursor-pointer hover:text-[#1D4046]/60 transition-colors select-none">
+                          <MapPin aria-hidden="true" className="w-3.5 h-3.5"/> Current City
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => handleUseCurrentLocation("transit")}
+                          className="text-[10px] font-bold text-[#F59E0B] hover:text-[#F59E0B]/80 transition-colors flex items-center gap-1 focus-visible:outline-none focus-visible:underline select-none"
+                        >
+                          {isDetectingLocation === "transit" ? "Detecting..." : "Use My Location"}
+                        </button>
+                      </div>
                       <div className="relative">
                         <input
                           id="transitCity"
@@ -594,8 +680,19 @@ export default function Home() {
 
                 <div className="relative w-64 h-64 flex items-center justify-center">
                     <svg role="img" aria-label="Transit Score Radial Graph" className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
-                        <circle cx="50" cy="50" r="45" fill="none" stroke="#F9F7F1" strokeWidth="10" />
-                        <circle cx="50" cy="50" r="45" fill="none" stroke="#F59E0B" strokeWidth="10" strokeDasharray="283" strokeDashoffset={283 - (283 * gocharaScore) / 100} className="transition-all duration-1000 ease-out" strokeLinecap="round" />
+                        {/* Outer track */}
+                        <circle cx="50" cy="50" r="45" fill="none" stroke="#F9F7F1" strokeWidth="6" />
+                        {/* Inner gold decorative track */}
+                        <circle cx="50" cy="50" r="40" fill="none" stroke="#F59E0B" strokeWidth="1" strokeOpacity="0.25" strokeDasharray="2 2" />
+                        {/* Interactive dynamic progress ring */}
+                        <circle cx="50" cy="50" r="45" fill="none" stroke="url(#radial-accent-gradient)" strokeWidth="8" strokeDasharray="283" strokeDashoffset={283 - (283 * gocharaScore) / 100} className="transition-all duration-1000 ease-out" strokeLinecap="round" />
+
+                        <defs>
+                            <linearGradient id="radial-accent-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" stopColor="#F59E0B" />
+                                <stop offset="100%" stopColor="#d97706" />
+                            </linearGradient>
+                        </defs>
                     </svg>
                     <div className="absolute flex flex-col items-center">
                         <span className="text-7xl font-serif font-bold text-[#1D4046] tracking-tighter">{gocharaScore.toFixed(1)}<span className="text-2xl text-[#1D4046]/40 ml-1">%</span></span>
@@ -737,6 +834,11 @@ export default function Home() {
                             {timelineEvents.map((ev, idx) => {
                                 const xCoord = 50 + (ev.day / 30) * 50;
                                 const isActiveDay = ev.day === scrubDays;
+                                // find corresponding score on that day (day offset -30 to +30, index 0 to 60)
+                                const scoreIndex = ev.day + 30;
+                                const score = timelineScores[scoreIndex] ?? 50;
+                                const yCoord = 100 - score;
+
                                 return (
                                     <g key={idx}>
                                         <line
@@ -750,10 +852,49 @@ export default function Home() {
                                             strokeOpacity={isActiveDay ? "0.6" : "0.15"}
                                             vectorEffect="non-scaling-stroke"
                                         />
+                                        <circle
+                                            cx={xCoord}
+                                            cy={yCoord}
+                                            r={isActiveDay ? "5" : "3.5"}
+                                            fill={isActiveDay ? "#F59E0B" : "#ffffff"}
+                                            stroke="#F59E0B"
+                                            strokeWidth="2"
+                                            className="cursor-pointer transition-all duration-200 hover:scale-150 hover:fill-[#F59E0B]"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                setScrubDays(ev.day);
+                                            }}
+                                            onMouseEnter={() => {
+                                                setHoveredEvent({
+                                                    day: ev.day,
+                                                    label: ev.label,
+                                                    score,
+                                                    percentX: xCoord,
+                                                    percentY: yCoord,
+                                                });
+                                            }}
+                                            onMouseLeave={() => setHoveredEvent(null)}
+                                        />
                                     </g>
                                 );
                             })}
                         </svg>
+
+                        {/* Interactive Event Tooltip */}
+                        {hoveredEvent && (
+                            <div
+                                className="absolute z-10 bg-[#1D4046] text-white p-2 rounded-lg shadow-xl text-[11px] font-sans border border-white/10 pointer-events-none transform -translate-x-1/2 -translate-y-[110%] transition-opacity duration-150"
+                                style={{
+                                    left: `${hoveredEvent.percentX}%`,
+                                    top: `${hoveredEvent.percentY}%`,
+                                }}
+                            >
+                                <div className="font-bold text-[#F59E0B]">{hoveredEvent.label}</div>
+                                <div className="text-white/60">
+                                    {hoveredEvent.day === 0 ? "Today" : `${Math.abs(hoveredEvent.day)} days ${hoveredEvent.day > 0 ? 'forward' : 'back'}`} • Score: {hoveredEvent.score.toFixed(1)}%
+                                </div>
+                            </div>
+                        )}
 
                         <div
                             className="absolute w-3 h-3 rounded-full bg-white border-2 border-[#F59E0B] shadow-[0_0_8px_#F59E0B] transition-all duration-75 pointer-events-none"
@@ -937,6 +1078,43 @@ export default function Home() {
                         </div>
                     </div>
                 </header>
+
+                {/* Elegant Interactive Symbol Legend / Glossary */}
+                <section className="bg-white p-6 rounded-3xl border border-[#1D4046]/10 shadow-sm select-none">
+                    <h2 className="text-xs font-bold text-[#1D4046]/60 uppercase tracking-[0.2em] mb-4 flex items-center gap-2">
+                        <span className="inline-block w-1.5 h-1.5 bg-[#F59E0B] rotate-45" /> Planet & Symbol Glossary
+                    </h2>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 lg:grid-cols-9 gap-3">
+                        {[
+                            { s: "As", n: "Ascendant", desc: "Ascendant (Lagna)" },
+                            { s: "Su", n: "Sun", desc: "Surya (Sun)" },
+                            { s: "Mo", n: "Moon", desc: "Chandra (Moon)" },
+                            { s: "Ma", n: "Mars", desc: "Mangala (Mars)" },
+                            { s: "Me", n: "Mercury", desc: "Budha (Mercury)" },
+                            { s: "Ju", n: "Jupiter", desc: "Guru (Jupiter)" },
+                            { s: "Ve", n: "Venus", desc: "Shukra (Venus)" },
+                            { s: "Sa", n: "Saturn", desc: "Shani (Saturn)" },
+                            { s: "Ra", n: "Rahu", desc: "North Node" },
+                            { s: "Ke", n: "Ketu", desc: "South Node" },
+                            { s: "Kl", n: "Kala", desc: "Kala (Upgraha)" },
+                            { s: "Mr", n: "Mrityu", desc: "Mrityu (Upgraha)" },
+                            { s: "Ar", n: "Ardhaprahara", desc: "Ardhaprahara" },
+                            { s: "Yg", n: "Yamaghantaka", desc: "Yamaghantaka" },
+                            { s: "Gk", n: "Gulika", desc: "Gulika (Sub-planet)" },
+                            { s: "Mn", n: "Mandi", desc: "Mandi (Sub-planet)" },
+                            { s: "Dh", n: "Dhuma", desc: "Dhuma (Aprakasha)" },
+                            { s: "Vy", n: "Vyatipata", desc: "Vyatipata" }
+                        ].map((item, idx) => (
+                            <div key={idx} className="group relative flex items-center gap-2 px-3 py-2 bg-[#F9F7F1]/60 hover:bg-[#F59E0B]/10 rounded-xl border border-[#1D4046]/5 transition-all cursor-pointer">
+                                <span className={`text-xs font-bold font-serif ${item.s === 'As' ? 'text-[#F59E0B]' : 'text-[#1D4046]'}`}>{item.s}</span>
+                                <span className="text-[11px] text-[#1D4046]/75 font-medium truncate">{item.n}</span>
+                                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block bg-[#1D4046] text-white text-[10px] py-1 px-2.5 rounded shadow-lg whitespace-nowrap z-50">
+                                    {item.desc}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </section>
                 <div className="grid lg:grid-cols-2 gap-8">
                     <div className="bg-white p-6 rounded-3xl border border-[#1D4046]/10 shadow-sm">
                         <h2 className="text-center font-serif text-lg mb-6 text-[#F59E0B] select-none">Natal Chart (Birth)</h2>
