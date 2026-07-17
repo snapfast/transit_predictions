@@ -1,9 +1,9 @@
 "use client";
 
 import { useState, useEffect, useRef, KeyboardEvent, useMemo } from "react";
-import { calculateTransits, PlanetData, DivisionalChartData, Predictions, DashaInfo, SadeSatiInfo, Remedy, AyanamsaType, AshtakavargaData, getRotatedChart, generatePredictionsFromRasi } from "@/lib/astrology";
+import { calculateTransits, PlanetData, DivisionalChartData, Predictions, DashaInfo, SadeSatiInfo, Remedy, AyanamsaType, AshtakavargaData } from "@/lib/astrology";
 import KundliChart, { ChartStyle } from "@/components/KundliChart";
-import { Clock, MapPin, Calendar, Sun, Moon, Info, Sparkles, User, Navigation, ChevronUp, Settings, Edit2 } from "lucide-react";
+import { Clock, MapPin, Calendar, Sun, Info, Sparkles, User, Navigation, ChevronUp, Settings, Edit2 } from "lucide-react";
 
 interface Suggestion { name: string; lat: string; lon: string; }
 const SUGGESTIONS_CACHE = new Map<string, Suggestion[]>();
@@ -77,8 +77,6 @@ export default function Home() {
   const [dasha, setDasha] = useState<DashaInfo | undefined>(undefined);
   const [sadeSati, setSadeSati] = useState<SadeSatiInfo | undefined>(undefined);
   const [natalChart, setNatalChart] = useState<DivisionalChartData | null>(null);
-  const [natalMoonRasi, setNatalMoonRasi] = useState<string>("Aries");
-  const [natalLagnaRasi, setNatalLagnaRasi] = useState<string>("Aries");
   const [gocharaScore, setGocharaScore] = useState<number>(50);
   const [timelineScores, setTimelineScores] = useState<number[]>([]);
   const [timelineEvents, setTimelineEvents] = useState<Array<{ day: number, label: string }>>([]);
@@ -98,7 +96,6 @@ export default function Home() {
   const [ayanamsa, setAyanamsa] = useState<AyanamsaType>("Lahiri");
   const [referencePoint, setReferencePoint] = useState<"Moon" | "Lagna" | "Dasha Lord">("Moon");
   const [predictionReference, setPredictionReference] = useState<"Moon" | "Lagna">("Moon");
-  const [timeResultTab, setTimeResultTab] = useState<"Aries" | "Moon" | "Lagna">("Moon");
   const [chartStyle, setChartStyle] = useState<ChartStyle>("North");
   const [scrubDays, setScrubDays] = useState<number>(0);
   const [isInitialized, setIsInitialized] = useState(false);
@@ -287,13 +284,13 @@ export default function Home() {
 
       queueMicrotask(() => {
         setPlanets(res.planets);
-        setChartData(res.d1);
-        setD9Data(res.d9);
-        setD60Data(res.d60);
+        setChartData(res.d1Asc);
+        setD9Data(res.d9Asc);
+        setD60Data(res.d60Asc);
         setUpgrahas(res.upgrahas || []);
-        setD1WithUpgrahas(res.d1WithUpgrahas || null);
-        setD9WithUpgrahas(res.d9WithUpgrahas || null);
-        setD60WithUpgrahas(res.d60WithUpgrahas || null);
+        setD1WithUpgrahas(res.d1WithUpgrahasAsc || null);
+        setD9WithUpgrahas(res.d9WithUpgrahasAsc || null);
+        setD60WithUpgrahas(res.d60WithUpgrahasAsc || null);
         setPredictionsMoon(res.predictionsMoon);
         setPredictionsLagna(res.predictionsLagna);
         setDasha(res.dasha);
@@ -306,16 +303,6 @@ export default function Home() {
             const natal = calculateTransits(birthDetails.date, birthDetails.lat, birthDetails.lon, undefined, ayanamsa);
             setNatalChart(natal.d1);
             setNatalChartWithUpgrahas(natal.d1WithUpgrahas || null);
-
-            // Extract Moon and Lagna rasis from natal chart
-            const nMoon = natal.planets.find(p => p.name === "Moon");
-            if (nMoon) {
-                setNatalMoonRasi(nMoon.rasi);
-            }
-            const nLagna = natal.planets.find(p => p.name === "Ascendant");
-            if (nLagna) {
-                setNatalLagnaRasi(nLagna.rasi);
-            }
         }
       });
     }, 50); // Minimal 50ms delay for ultra-fast, snappy scrubbing response
@@ -635,6 +622,167 @@ export default function Home() {
                   </div>
                 )}
             </section>
+
+            {/* Integrated Transit Timeline Scrubber */}
+            <section className="bg-white p-8 rounded-[3rem] border border-[#1D4046]/10 shadow-xl space-y-6 select-none relative overflow-hidden">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-center border-b border-[#1D4046]/5 pb-6">
+                    <div className="space-y-1">
+                        <div className="text-xs font-bold text-[#1D4046]/40 uppercase tracking-widest flex items-center gap-2">
+                            Current Position
+                            {scrubDays !== 0 && (
+                                <button
+                                    onClick={() => setScrubDays(0)}
+                                    aria-label="Reset to current date"
+                                    className="bg-[#F59E0B]/15 text-[#F59E0B] px-2 py-0.5 rounded text-[10px] font-extrabold hover:bg-[#F59E0B]/25 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F59E0B]"
+                                >
+                                    Reset to Today
+                                </button>
+                            )}
+                        </div>
+                        <div className="text-2xl font-serif text-[#1D4046]">{getScrubbedDateStr()}</div>
+                        <div className="text-xs text-[#1D4046]/50">
+                            {scrubDays === 0 ? "Today" : `${Math.abs(scrubDays)} days ${scrubDays > 0 ? 'forward' : 'backward'} in time`}
+                        </div>
+                    </div>
+
+                    <div className="flex md:justify-center items-center gap-4">
+                        <div className="w-12 h-12 rounded-2xl bg-[#F59E0B]/10 flex items-center justify-center font-serif text-xl font-bold text-[#F59E0B]">
+                            {gocharaScore.toFixed(0)}
+                        </div>
+                        <div>
+                            <div className="text-xs font-bold text-[#1D4046]/40 uppercase tracking-widest">Gochara Score</div>
+                            <div className={`text-sm font-bold ${gocharaScore >= 70 ? 'text-green-600' : gocharaScore >= 50 ? 'text-yellow-600' : 'text-red-500'}`}>
+                                {gocharaScore >= 70 ? 'Highly Auspicious' : gocharaScore >= 50 ? 'Stable & Supportive' : 'Exercise Caution'}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="flex flex-col md:items-end justify-center space-y-1">
+                        <div className="text-xs font-bold text-[#1D4046]/40 uppercase tracking-widest">Active Sign Transits</div>
+                        <div className="flex flex-wrap md:justify-end gap-1.5 max-w-xs">
+                            {activeSignEvents.length > 0 ? (
+                                activeSignEvents.map((ev, i) => (
+                                    <span key={i} className="text-[10px] font-bold bg-[#F59E0B] text-white px-2.5 py-1 rounded-full shadow-sm animate-bounce">
+                                        {ev.label}
+                                    </span>
+                                ))
+                            ) : (
+                                <span className="text-xs text-[#1D4046]/40 italic">No exact sign changes today</span>
+                            )}
+                        </div>
+                    </div>
+                </div>
+
+                <div className="relative">
+                    <div className="absolute inset-y-0 left-0 flex flex-col justify-between pointer-events-none text-[10px] font-bold text-[#1D4046]/30 uppercase pl-1 select-none py-2">
+                        <div>Excellent</div>
+                        <div>Neutral</div>
+                        <div>Caution</div>
+                    </div>
+
+                    <div className="h-56 w-full bg-gradient-to-b from-[#F9F7F1]/50 to-white rounded-2xl border border-[#1D4046]/5 relative overflow-hidden select-none">
+                        <svg
+                            ref={svgRef}
+                            role="img"
+                            aria-label="Interactive timeline showing transit score over 60 days"
+                            className="w-full h-full select-none cursor-ew-resize overflow-visible"
+                            preserveAspectRatio="none"
+                            viewBox="0 0 100 100"
+                            onClick={handleSvgClick}
+                            onMouseMove={handleSvgMouseMove}
+                            onTouchMove={handleSvgTouchMove}
+                        >
+                            <defs>
+                                <linearGradient id="timeline-gradient" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="0%" stopColor="#F59E0B" stopOpacity="0.18" />
+                                    <stop offset="100%" stopColor="#F59E0B" stopOpacity="0.00" />
+                                </linearGradient>
+                            </defs>
+
+                            <line x1="0" y1="50" x2="100" y2="50" stroke="#1D4046" strokeWidth="1" strokeDasharray="3 3" strokeOpacity="0.12" vectorEffect="non-scaling-stroke" />
+                            <line x1="0" y1="30" x2="100" y2="30" stroke="#1D4046" strokeWidth="1" strokeDasharray="2 2" strokeOpacity="0.04" vectorEffect="non-scaling-stroke" />
+                            <line x1="0" y1="70" x2="100" y2="70" stroke="#1D4046" strokeWidth="1" strokeDasharray="2 2" strokeOpacity="0.04" vectorEffect="non-scaling-stroke" />
+
+                            {timelineScores.length > 0 && (
+                                <path
+                                    d={`M 0,100 L ${timelinePathStr} L 100,100 Z`}
+                                    fill="url(#timeline-gradient)"
+                                />
+                            )}
+
+                            {timelineScores.length > 0 && (
+                                <path
+                                    d={`M ${timelinePathStr}`}
+                                    fill="none"
+                                    stroke="#F59E0B"
+                                    strokeWidth="1.5"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    vectorEffect="non-scaling-stroke"
+                                />
+                            )}
+
+                            <line
+                                x1={50 + (scrubDays / 30) * 50}
+                                y1="0"
+                                x2={50 + (scrubDays / 30) * 50}
+                                y2="100"
+                                stroke="#1D4046"
+                                strokeWidth="1"
+                                strokeDasharray="2 2"
+                                strokeOpacity="0.25"
+                                vectorEffect="non-scaling-stroke"
+                            />
+
+                            {timelineEvents.map((ev, idx) => {
+                                const xCoord = 50 + (ev.day / 30) * 50;
+                                const isActiveDay = ev.day === scrubDays;
+                                return (
+                                    <g key={idx}>
+                                        <line
+                                            x1={xCoord}
+                                            y1="0"
+                                            x2={xCoord}
+                                            y2="100"
+                                            stroke="#F59E0B"
+                                            strokeWidth={isActiveDay ? "1.5" : "1"}
+                                            strokeDasharray="2"
+                                            strokeOpacity={isActiveDay ? "0.6" : "0.15"}
+                                            vectorEffect="non-scaling-stroke"
+                                        />
+                                    </g>
+                                );
+                            })}
+                        </svg>
+
+                        <div
+                            className="absolute w-3 h-3 rounded-full bg-white border-2 border-[#F59E0B] shadow-[0_0_8px_#F59E0B] transition-all duration-75 pointer-events-none"
+                            style={{
+                                left: `calc(${50 + (scrubDays / 30) * 50}% - 6px)`,
+                                top: `calc(${100 - gocharaScore}% - 6px)`,
+                            }}
+                        />
+                    </div>
+                </div>
+
+                <div className="space-y-1">
+                    <input
+                        type="range"
+                        min="-30"
+                        max="30"
+                        value={scrubDays}
+                        onChange={e => setScrubDays(parseInt(e.target.value))}
+                        aria-label="Transit Timeline Scrubber"
+                        aria-valuetext={scrubDays === 0 ? "Current Date" : `${Math.abs(scrubDays)} days ${scrubDays > 0 ? 'forward' : 'back'}`}
+                        className="w-full h-1.5 bg-[#F9F7F1] rounded-lg appearance-none cursor-pointer accent-[#F59E0B] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F59E0B]"
+                    />
+                    <div className="flex justify-between text-[10px] font-bold text-[#1D4046]/40 uppercase tracking-widest select-none">
+                        <span>-30 Days</span>
+                        <span>Today</span>
+                        <span>+30 Days</span>
+                    </div>
+                </div>
+            </section>
           </div>
         )}
 
@@ -707,369 +855,67 @@ export default function Home() {
                     </div>
                 </section>
             )}
-          </div>
-        )}
 
-        {activeTab === "timeline" && (
-            <div className="space-y-8 animate-in fade-in duration-500">
-                <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 select-none">
-                    <div>
-                        <h1 className="text-4xl font-serif text-[#1D4046]">Transit Timeline</h1>
-                        <p className="text-sm text-[#1D4046]/60 mt-1">Scrub forward or backward up to 30 days to preview upcoming energy transitions.</p>
-                    </div>
-                </header>
-
-                <section className="bg-white p-8 rounded-3xl border border-[#1D4046]/10 shadow-sm space-y-6 select-none relative overflow-hidden">
-                    {/* Floating Premium Details Panel */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-center border-b border-[#1D4046]/5 pb-6">
-                        <div className="space-y-1">
-                            <div className="text-xs font-bold text-[#1D4046]/40 uppercase tracking-widest flex items-center gap-2">
-                                Current Position
-                                {scrubDays !== 0 && (
-                                    <button
-                                        onClick={() => setScrubDays(0)}
-                                        aria-label="Reset to current date"
-                                        className="bg-[#F59E0B]/15 text-[#F59E0B] px-2 py-0.5 rounded text-[10px] font-extrabold hover:bg-[#F59E0B]/25 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F59E0B]"
-                                    >
-                                        Reset to Today
-                                    </button>
-                                )}
+            {/* Combined Dasha Progress Bars */}
+            <h2 className="text-xs font-bold text-[#1D4046]/60 uppercase tracking-[0.3em] flex items-center gap-3 select-none">
+              <div className="h-px w-8 bg-[#1D4046]/20" /> Active Dasha Periods
+            </h2>
+            {dasha && (
+                <section className="bg-white p-8 rounded-[2rem] border border-[#1D4046]/10 shadow-sm space-y-10">
+                    {[
+                      { label: "Mahadasha", value: dasha.mahadasha, color: "bg-[#F59E0B]" },
+                      { label: "Antardasha", value: dasha.antardasha, color: "bg-[#1D4046]" },
+                      { label: "Pratyantardasha", value: dasha.pratyantardasha, color: "bg-green-600" }
+                    ].map((level, idx) => (
+                        <div key={level.label}>
+                            <div className="flex justify-between items-end mb-3">
+                                <div className="text-xs font-bold text-[#1D4046]/40 uppercase tracking-widest">
+                                  {level.label}: <span className={level.label === "Mahadasha" ? "text-[#F59E0B]" : "text-[#1D4046]"}>{level.value.lord}</span>
+                                </div>
+                                <div className="text-xs text-[#1D4046]/40 font-bold">
+                                  Ends {new Date(level.value.end).toLocaleDateString()}
+                                </div>
                             </div>
-                            <div className="text-2xl font-serif text-[#1D4046]">{getScrubbedDateStr()}</div>
-                            <div className="text-xs text-[#1D4046]/50">
-                                {scrubDays === 0 ? "Today" : `${Math.abs(scrubDays)} days ${scrubDays > 0 ? 'forward' : 'backward'} in time`}
+                            <div className="h-1.5 w-full bg-[#F9F7F1] rounded-full overflow-hidden">
+                              <div
+                                className={`h-full ${level.color} transition-all duration-1000`}
+                                style={{ width: `${(idx + 1) * 25}%` }}
+                              />
                             </div>
                         </div>
+                    ))}
+                </section>
+            )}
 
-                        <div className="flex md:justify-center items-center gap-4">
-                            <div className="w-12 h-12 rounded-2xl bg-[#F59E0B]/10 flex items-center justify-center font-serif text-xl font-bold text-[#F59E0B]">
-                                {gocharaScore.toFixed(0)}
+            {/* Combined Remedies (Upayas) */}
+            <h2 className="text-xs font-bold text-[#1D4046]/60 uppercase tracking-[0.3em] flex items-center gap-3 select-none">
+              <div className="h-px w-8 bg-[#1D4046]/20" /> Astrological Remedies (Upayas)
+            </h2>
+            <div className="grid md:grid-cols-2 gap-6">
+                {remedies.map((remedy, i) => (
+                    <div key={i} className="bg-white p-8 rounded-[2rem] border border-[#1D4046]/10 shadow-sm group hover:border-[#F59E0B]/40 transition-all">
+                        <div className="flex justify-between items-start mb-6">
+                            <h3 className="text-xl font-serif font-bold text-[#1D4046]">{remedy.planet} Upaya</h3>
+                            <span className="text-[10px] font-bold text-[#F59E0B] bg-[#F59E0B]/5 px-3 py-1 rounded-full border border-[#F59E0B]/20 uppercase">{remedy.condition}</span>
+                        </div>
+                        <div className="space-y-6">
+                            <div className="bg-[#F9F7F1] p-4 rounded-2xl border border-[#1D4046]/5">
+                                <div className="text-[10px] font-bold text-[#F59E0B] uppercase mb-2 tracking-widest">Sattvic Mantra</div>
+                                <p className="font-serif italic text-[#1D4046] leading-relaxed">&ldquo;{remedy.mantra}&rdquo;</p>
                             </div>
                             <div>
-                                <div className="text-xs font-bold text-[#1D4046]/40 uppercase tracking-widest">Gochara Score</div>
-                                <div className={`text-sm font-bold ${gocharaScore >= 70 ? 'text-green-600' : gocharaScore >= 50 ? 'text-yellow-600' : 'text-red-500'}`}>
-                                    {gocharaScore >= 70 ? 'Highly Auspicious' : gocharaScore >= 50 ? 'Stable & Supportive' : 'Exercise Caution'}
-                                </div>
+                                <div className="text-[10px] font-bold text-[#1D4046]/40 uppercase mb-1 tracking-widest">Charity (Daan)</div>
+                                <p className="text-sm text-[#1D4046]/80">{remedy.charity}</p>
                             </div>
-                        </div>
-
-                        <div className="flex flex-col md:items-end justify-center space-y-1">
-                            <div className="text-xs font-bold text-[#1D4046]/40 uppercase tracking-widest">Active Sign Transits</div>
-                            <div className="flex flex-wrap md:justify-end gap-1.5 max-w-xs">
-                                {activeSignEvents.length > 0 ? (
-                                    activeSignEvents.map((ev, i) => (
-                                        <span key={i} className="text-[10px] font-bold bg-[#F59E0B] text-white px-2.5 py-1 rounded-full shadow-sm animate-bounce">
-                                            {ev.label}
-                                        </span>
-                                    ))
-                                ) : (
-                                    <span className="text-xs text-[#1D4046]/40 italic">No exact sign changes today</span>
-                                )}
+                            <div>
+                                <div className="text-[10px] font-bold text-[#1D4046]/40 uppercase mb-1 tracking-widest">Lifestyle</div>
+                                <p className="text-sm text-[#1D4046]/80">{remedy.lifestyle}</p>
                             </div>
                         </div>
                     </div>
-
-                    {/* Timeline Graph Wrapper */}
-                    <div className="relative">
-                        {/* Absolute Y-Axis Grid Label Guides */}
-                        <div className="absolute inset-y-0 left-0 flex flex-col justify-between pointer-events-none text-[10px] font-bold text-[#1D4046]/30 uppercase pl-1 select-none py-2">
-                            <div>Excellent</div>
-                            <div>Neutral</div>
-                            <div>Caution</div>
-                        </div>
-
-                        <div className="h-56 w-full bg-gradient-to-b from-[#F9F7F1]/50 to-white rounded-2xl border border-[#1D4046]/5 relative overflow-hidden select-none">
-                            {/* Interactive SVG Chart */}
-                            <svg
-                                ref={svgRef}
-                                role="img"
-                                aria-label="Interactive timeline showing transit score over 60 days"
-                                className="w-full h-full select-none cursor-ew-resize overflow-visible"
-                                preserveAspectRatio="none"
-                                viewBox="0 0 100 100"
-                                onClick={handleSvgClick}
-                                onMouseMove={handleSvgMouseMove}
-                                onTouchMove={handleSvgTouchMove}
-                            >
-                                <defs>
-                                    <linearGradient id="timeline-gradient" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="0%" stopColor="#F59E0B" stopOpacity="0.18" />
-                                        <stop offset="100%" stopColor="#F59E0B" stopOpacity="0.00" />
-                                    </linearGradient>
-                                </defs>
-
-                                {/* Neutral Baseline Indicator (50%) */}
-                                <line x1="0" y1="50" x2="100" y2="50" stroke="#1D4046" strokeWidth="1" strokeDasharray="3 3" strokeOpacity="0.12" vectorEffect="non-scaling-stroke" />
-                                <line x1="0" y1="30" x2="100" y2="30" stroke="#1D4046" strokeWidth="1" strokeDasharray="2 2" strokeOpacity="0.04" vectorEffect="non-scaling-stroke" />
-                                <line x1="0" y1="70" x2="100" y2="70" stroke="#1D4046" strokeWidth="1" strokeDasharray="2 2" strokeOpacity="0.04" vectorEffect="non-scaling-stroke" />
-
-                                {/* Static Saffron Area Fill Under Path */}
-                                {timelineScores.length > 0 && (
-                                    <path
-                                        d={`M 0,100 L ${timelinePathStr} L 100,100 Z`}
-                                        fill="url(#timeline-gradient)"
-                                    />
-                                )}
-
-                                {/* Sharp, Thin Gochara Score Path */}
-                                {timelineScores.length > 0 && (
-                                    <path
-                                        d={`M ${timelinePathStr}`}
-                                        fill="none"
-                                        stroke="#F59E0B"
-                                        strokeWidth="1.5"
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        vectorEffect="non-scaling-stroke"
-                                    />
-                                )}
-
-                                {/* Vertical Dash Scrubber Tracker */}
-                                <line
-                                    x1={50 + (scrubDays / 30) * 50}
-                                    y1="0"
-                                    x2={50 + (scrubDays / 30) * 50}
-                                    y2="100"
-                                    stroke="#1D4046"
-                                    strokeWidth="1"
-                                    strokeDasharray="2 2"
-                                    strokeOpacity="0.25"
-                                    vectorEffect="non-scaling-stroke"
-                                />
-
-                                {/* Event Marker Highlights */}
-                                {timelineEvents.map((ev, idx) => {
-                                    const xCoord = 50 + (ev.day / 30) * 50;
-                                    const isActiveDay = ev.day === scrubDays;
-                                    return (
-                                        <g key={idx}>
-                                            <line
-                                                x1={xCoord}
-                                                y1="0"
-                                                x2={xCoord}
-                                                y2="100"
-                                                stroke="#F59E0B"
-                                                strokeWidth={isActiveDay ? "1.5" : "1"}
-                                                strokeDasharray="2"
-                                                strokeOpacity={isActiveDay ? "0.6" : "0.15"}
-                                                vectorEffect="non-scaling-stroke"
-                                            />
-                                        </g>
-                                    );
-                                })}
-                            </svg>
-
-                            {/* Perfectly Synced, Non-Distorted HTML Cursor with glowing shadow */}
-                            <div
-                                className="absolute w-3 h-3 rounded-full bg-white border-2 border-[#F59E0B] shadow-[0_0_8px_#F59E0B] transition-all duration-75 pointer-events-none"
-                                style={{
-                                    left: `calc(${50 + (scrubDays / 30) * 50}% - 6px)`,
-                                    top: `calc(${100 - gocharaScore}% - 6px)`,
-                                }}
-                            />
-                        </div>
-                    </div>
-
-                    {/* Standard Range Input Fallback (for keyboard navigation and precise scrub interaction) */}
-                    <div className="space-y-1">
-                        <input
-                            type="range"
-                            min="-30"
-                            max="30"
-                            value={scrubDays}
-                            onChange={e => setScrubDays(parseInt(e.target.value))}
-                            aria-label="Transit Timeline Scrubber"
-                            aria-valuetext={scrubDays === 0 ? "Current Date" : `${Math.abs(scrubDays)} days ${scrubDays > 0 ? 'forward' : 'back'}`}
-                            className="w-full h-1.5 bg-[#F9F7F1] rounded-lg appearance-none cursor-pointer accent-[#F59E0B] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F59E0B]"
-                        />
-                        <div className="flex justify-between text-[10px] font-bold text-[#1D4046]/40 uppercase tracking-widest select-none">
-                            <span>-30 Days</span>
-                            <span>Today</span>
-                            <span>+30 Days</span>
-                        </div>
-                    </div>
-                </section>
-                {/* 3 Rotated Charts for Analysis */}
-                <div className="space-y-6 select-none">
-                    <h2 className="text-xs font-bold text-[#1D4046]/60 uppercase tracking-[0.3em] flex items-center gap-3">
-                        <div className="h-px w-8 bg-[#F59E0B]/40" /> 3-Way Transit Chart Analysis
-                    </h2>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        {/* 1. Aries Chart (from Aries Mesha) */}
-                        <div className="bg-white p-6 rounded-3xl border border-[#1D4046]/10 shadow-sm flex flex-col justify-between">
-                            <div className="text-center mb-4">
-                                <h3 className="font-serif text-lg font-bold">From Aries (Mesha)</h3>
-                                <p className="text-xs text-[#1D4046]/60">Standard zodiac reference view</p>
-                            </div>
-                            <div className="flex-1 flex items-center justify-center">
-                                {planets.length > 0 ? (
-                                    <KundliChart
-                                        data={getRotatedChart(
-                                            showUpgrahasInCharts ? [...planets, ...upgrahas] : planets,
-                                            0
-                                        )}
-                                        style={chartStyle}
-                                    />
-                                ) : (
-                                    <div className="h-64 bg-[#F9F7F1] rounded animate-pulse w-full" />
-                                )}
-                            </div>
-                        </div>
-
-                        {/* 2. Moon Chart (from Native's Moon/Chandra Lagna) */}
-                        <div className="bg-white p-6 rounded-3xl border border-[#1D4046]/10 shadow-sm flex flex-col justify-between ring-2 ring-[#F59E0B]/10">
-                            <div className="text-center mb-4">
-                                <h3 className="font-serif text-lg font-bold text-[#F59E0B]">From Moon (Chandra Lagna)</h3>
-                                <p className="text-xs text-[#1D4046]/60 font-semibold">Chandra: {natalMoonRasi}</p>
-                            </div>
-                            <div className="flex-1 flex items-center justify-center">
-                                {planets.length > 0 ? (
-                                    <KundliChart
-                                        data={getRotatedChart(
-                                            showUpgrahasInCharts ? [...planets, ...upgrahas] : planets,
-                                            ["Aries", "Taurus", "Gemini", "Cancer", "Leo", "Virgo", "Libra", "Scorpio", "Sagittarius", "Capricorn", "Aquarius", "Pisces"].indexOf(natalMoonRasi) === -1 ? 0 : ["Aries", "Taurus", "Gemini", "Cancer", "Leo", "Virgo", "Libra", "Scorpio", "Sagittarius", "Capricorn", "Aquarius", "Pisces"].indexOf(natalMoonRasi)
-                                        )}
-                                        style={chartStyle}
-                                    />
-                                ) : (
-                                    <div className="h-64 bg-[#F9F7F1] rounded animate-pulse w-full" />
-                                )}
-                            </div>
-                        </div>
-
-                        {/* 3. Lagna Chart (from Native's Lagna/Janma Lagna) */}
-                        <div className="bg-white p-6 rounded-3xl border border-[#1D4046]/10 shadow-sm flex flex-col justify-between">
-                            <div className="text-center mb-4">
-                                <h3 className="font-serif text-lg font-bold">{"From Native's Lagna"}</h3>
-                                <p className="text-xs text-[#1D4046]/60">Janma Lagna: {natalLagnaRasi}</p>
-                            </div>
-                            <div className="flex-1 flex items-center justify-center">
-                                {planets.length > 0 ? (
-                                    <KundliChart
-                                        data={getRotatedChart(
-                                            showUpgrahasInCharts ? [...planets, ...upgrahas] : planets,
-                                            ["Aries", "Taurus", "Gemini", "Cancer", "Leo", "Virgo", "Libra", "Scorpio", "Sagittarius", "Capricorn", "Aquarius", "Pisces"].indexOf(natalLagnaRasi) === -1 ? 0 : ["Aries", "Taurus", "Gemini", "Cancer", "Leo", "Virgo", "Libra", "Scorpio", "Sagittarius", "Capricorn", "Aquarius", "Pisces"].indexOf(natalLagnaRasi)
-                                        )}
-                                        style={chartStyle}
-                                    />
-                                ) : (
-                                    <div className="h-64 bg-[#F9F7F1] rounded animate-pulse w-full" />
-                                )}
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                {/* 3-Way Transit Predictions & Results */}
-                {(() => {
-                    const rasisList = ["Aries", "Taurus", "Gemini", "Cancer", "Leo", "Virgo", "Libra", "Scorpio", "Sagittarius", "Capricorn", "Aquarius", "Pisces"];
-                    const moonRasiIdx = rasisList.indexOf(natalMoonRasi);
-                    const lagnaRasiIdx = rasisList.indexOf(natalLagnaRasi);
-
-                    const activePredictions = timeResultTab === "Aries"
-                        ? generatePredictionsFromRasi(planets, 0, "Aries")
-                        : timeResultTab === "Moon"
-                        ? generatePredictionsFromRasi(planets, moonRasiIdx === -1 ? 0 : moonRasiIdx, "Moon")
-                        : generatePredictionsFromRasi(planets, lagnaRasiIdx === -1 ? 0 : lagnaRasiIdx, "Lagna");
-
-                    return (
-                        <div className="space-y-6">
-                            <div className="flex flex-col md:flex-row justify-between items-center gap-4 border-b border-[#1D4046]/10 pb-4 select-none">
-                                <div>
-                                    <h2 className="text-xl font-serif text-[#1D4046]">Transit Interpretations</h2>
-                                    <p className="text-xs text-[#1D4046]/60">Compare predictions from different reference frames</p>
-                                </div>
-                                <div className="flex bg-white rounded-lg border border-[#1D4046]/10 p-1 shadow-sm" role="group" aria-label="Select Interpretation Reference">
-                                    <button
-                                        aria-pressed={timeResultTab === "Aries"}
-                                        onClick={() => setTimeResultTab("Aries")}
-                                        className={`px-4 py-1.5 text-xs rounded-md transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F59E0B] ${timeResultTab === "Aries" ? 'bg-[#1D4046] text-white font-bold' : 'text-[#1D4046]/60 hover:bg-[#F9F7F1]'}`}
-                                    >
-                                        From Aries (Mesha)
-                                    </button>
-                                    <button
-                                        aria-pressed={timeResultTab === "Moon"}
-                                        onClick={() => setTimeResultTab("Moon")}
-                                        className={`px-4 py-1.5 text-xs rounded-md transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F59E0B] ${timeResultTab === "Moon" ? 'bg-[#1D4046] text-white font-bold' : 'text-[#1D4046]/60 hover:bg-[#F9F7F1]'}`}
-                                    >
-                                        From Moon ({natalMoonRasi})
-                                    </button>
-                                    <button
-                                        aria-pressed={timeResultTab === "Lagna"}
-                                        onClick={() => setTimeResultTab("Lagna")}
-                                        className={`px-4 py-1.5 text-xs rounded-md transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F59E0B] ${timeResultTab === "Lagna" ? 'bg-[#1D4046] text-white font-bold' : 'text-[#1D4046]/60 hover:bg-[#F9F7F1]'}`}
-                                    >
-                                        From Lagna ({natalLagnaRasi})
-                                    </button>
-                                </div>
-                            </div>
-
-                            {/* Results Container */}
-                            <div className="grid lg:grid-cols-3 gap-8">
-                                {/* 1. Placements (Houses) */}
-                                <div className="bg-white p-6 rounded-3xl border border-[#1D4046]/10 shadow-sm space-y-4">
-                                    <h3 className="font-serif text-lg font-bold border-b border-[#1D4046]/5 pb-2 text-[#1D4046] flex items-center gap-2 select-none">
-                                        <span className="w-2 h-2 rounded-full bg-[#F59E0B]" /> House Placements
-                                    </h3>
-                                    <ul className="space-y-3 max-h-96 overflow-y-auto pr-2">
-                                        {activePredictions.placements.map((p, idx) => {
-                                            const [title, desc] = p.split(': ');
-                                            return (
-                                                <li key={idx} className="text-sm text-[#1D4046]/80 leading-relaxed border-b border-[#1D4046]/5 pb-3 last:border-0 last:pb-0">
-                                                    <div className="font-bold text-[#1D4046]">{title}</div>
-                                                    <div className="text-xs text-[#1D4046]/70 mt-1">{desc}</div>
-                                                </li>
-                                            );
-                                        })}
-                                    </ul>
-                                </div>
-
-                                {/* 2. Aspects */}
-                                <div className="bg-white p-6 rounded-3xl border border-[#1D4046]/10 shadow-sm space-y-4">
-                                    <h3 className="font-serif text-lg font-bold border-b border-[#1D4046]/5 pb-2 text-[#1D4046] flex items-center gap-2 select-none">
-                                        <span className="w-2 h-2 rounded-full bg-[#1D4046]" /> Planetary Aspects
-                                    </h3>
-                                    <ul className="space-y-3 max-h-96 overflow-y-auto pr-2">
-                                        {activePredictions.aspects.map((aspect, idx) => (
-                                            <li key={idx} className="text-sm text-[#1D4046]/80 leading-relaxed border-b border-[#1D4046]/5 pb-3 last:border-0 last:pb-0 flex items-start gap-2">
-                                                <span className="text-[#F59E0B] font-bold select-none">✦</span>
-                                                <span>{aspect}</span>
-                                            </li>
-                                        ))}
-                                    </ul>
-                                </div>
-
-                                {/* 3. Active Yogas */}
-                                <div className="bg-[#1D4046] p-6 rounded-3xl text-white shadow-sm space-y-4 flex flex-col justify-between">
-                                    <div>
-                                        <h3 className="font-serif text-lg font-bold border-b border-white/10 pb-2 text-white flex items-center gap-2 select-none">
-                                            <Sparkles className="w-4 h-4 text-[#F59E0B]" /> Active Yogas
-                                        </h3>
-                                        {activePredictions.yogas.length > 0 ? (
-                                            <ul className="space-y-4 mt-4 max-h-80 overflow-y-auto pr-2">
-                                                {activePredictions.yogas.map((yoga, idx) => {
-                                                    const [title, desc] = yoga.split(': ');
-                                                    return (
-                                                        <li key={idx} className="bg-white/5 p-3 rounded-xl border border-white/10">
-                                                            <div className="font-bold text-[#F59E0B] text-sm">{title}</div>
-                                                            <div className="text-xs text-white/80 mt-1">{desc}</div>
-                                                        </li>
-                                                    );
-                                                })}
-                                            </ul>
-                                        ) : (
-                                            <div className="text-sm text-white/60 italic mt-6 flex flex-col items-center justify-center py-12 text-center select-none">
-                                                <Sparkles className="w-8 h-8 mb-2 opacity-25" />
-                                                No major transit yogas active for this reference point.
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    );
-                })()}
+                ))}
             </div>
+          </div>
         )}
 
         {activeTab === "charts" && (
@@ -1224,66 +1070,10 @@ export default function Home() {
                 )}
             </div>
         )}
-
-        {activeTab === "remedies" && (
-            <div className="space-y-8 animate-in fade-in duration-500">
-                <h1 className="text-4xl font-serif text-[#1D4046] select-none">Upayas & Dasha</h1>
-                {dasha && (
-                    <section className="bg-white p-8 rounded-3xl border border-[#1D4046]/10 shadow-sm space-y-10">
-                        {[
-                          { label: "Mahadasha", value: dasha.mahadasha, color: "bg-[#F59E0B]" },
-                          { label: "Antardasha", value: dasha.antardasha, color: "bg-[#1D4046]" },
-                          { label: "Pratyantardasha", value: dasha.pratyantardasha, color: "bg-green-600" }
-                        ].map((level, idx) => (
-                            <div key={level.label}>
-                                <div className="flex justify-between items-end mb-3">
-                                    <div className="text-xs font-bold text-[#1D4046]/40 uppercase tracking-widest">
-                                      {level.label}: <span className={level.label === "Mahadasha" ? "text-[#F59E0B]" : "text-[#1D4046]"}>{level.value.lord}</span>
-                                    </div>
-                                    <div className="text-xs text-[#1D4046]/40 font-bold">
-                                      Ends {new Date(level.value.end).toLocaleDateString()}
-                                    </div>
-                                </div>
-                                <div className="h-1.5 w-full bg-[#F9F7F1] rounded-full overflow-hidden">
-                                  <div
-                                    className={`h-full ${level.color} transition-all duration-1000`}
-                                    style={{ width: `${(idx + 1) * 25}%` }}
-                                  />
-                                </div>
-                            </div>
-                        ))}
-                    </section>
-                )}
-                <div className="grid md:grid-cols-2 gap-6">
-                    {remedies.map((remedy, i) => (
-                        <div key={i} className="bg-white p-8 rounded-3xl border border-[#1D4046]/10 shadow-sm group hover:border-[#F59E0B]/40 transition-all">
-                            <div className="flex justify-between items-start mb-6">
-                                <h3 className="text-xl font-serif font-bold text-[#1D4046]">{remedy.planet} Upaya</h3>
-                                <span className="text-[10px] font-bold text-[#F59E0B] bg-[#F59E0B]/5 px-3 py-1 rounded-full border border-[#F59E0B]/20 uppercase">{remedy.condition}</span>
-                            </div>
-                            <div className="space-y-6">
-                                <div className="bg-[#F9F7F1] p-4 rounded-2xl border border-[#1D4046]/5">
-                                    <div className="text-[10px] font-bold text-[#F59E0B] uppercase mb-2 tracking-widest">Sattvic Mantra</div>
-                                    <p className="font-serif italic text-[#1D4046] leading-relaxed">&ldquo;{remedy.mantra}&rdquo;</p>
-                                </div>
-                                <div>
-                                    <div className="text-[10px] font-bold text-[#1D4046]/40 uppercase mb-1 tracking-widest">Charity (Daan)</div>
-                                    <p className="text-sm text-[#1D4046]/80">{remedy.charity}</p>
-                                </div>
-                                <div>
-                                    <div className="text-[10px] font-bold text-[#1D4046]/40 uppercase mb-1 tracking-widest">Lifestyle</div>
-                                    <p className="text-sm text-[#1D4046]/80">{remedy.lifestyle}</p>
-                                </div>
-                            </div>
-                        </div>
-                    ))}
-                </div>
-            </div>
-        )}
       </div>
 
       <nav aria-label="Main Navigation" role="tablist" className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-[#1D4046]/90 backdrop-blur-md px-8 py-4 rounded-full flex gap-12 shadow-2xl items-center z-50 transition-all border border-white/10 select-none">
-        {[{id: "dashboard", icon: Sun, label: "Sky"}, {id: "predictions", icon: Sparkles, label: "Predict"}, {id: "timeline", icon: Moon, label: "Time"}, {id: "charts", icon: Info, label: "Deep"}, {id: "remedies", icon: User, label: "Upaya"}].map(tab => (
+        {[{id: "dashboard", icon: Sun, label: "Sky"}, {id: "predictions", icon: Sparkles, label: "Predict"}, {id: "charts", icon: Info, label: "Deep"}].map(tab => (
             <button
                 key={tab.id} role="tab" aria-selected={activeTab === tab.id}
                 onClick={() => setActiveTab(tab.id)}
