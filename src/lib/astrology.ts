@@ -217,10 +217,18 @@ export function getD60Rasi(longitude: number): number {
     return (rasiIdx + Math.floor(degInSign * 2)) % 12;
 }
 
+export interface CombinedPrediction {
+    title: string;
+    description: string;
+    type: 'Career & Ambition' | 'Relationship & Social' | 'Health & Vitality' | 'Spiritual & Inner Growth' | 'Financial & Fortune';
+    contributors: string[];
+}
+
 export interface Predictions {
     placements: string[];
     aspects: string[];
     yogas: string[];
+    combined: CombinedPrediction[];
 }
 
 export interface DashaLevel {
@@ -458,6 +466,21 @@ export function getRotatedChart(planets: PlanetData[], refRasiIdx: number): Divi
     return chart;
 }
 
+function getAspectedHouses(name: string, h: number): number[] {
+    const list = [(h + 6) % 12 || 12];
+    if (name === "Mars") {
+        list.push((h + 3) % 12 || 12);
+        list.push((h + 7) % 12 || 12);
+    } else if (name === "Jupiter" || name === "Rahu" || name === "Ketu") {
+        list.push((h + 4) % 12 || 12);
+        list.push((h + 8) % 12 || 12);
+    } else if (name === "Saturn") {
+        list.push((h + 2) % 12 || 12);
+        list.push((h + 9) % 12 || 12);
+    }
+    return list;
+}
+
 export function generatePredictionsFromRasi(planets: PlanetData[], refRasiIdx: number, refName: string): Predictions {
     const placements: string[] = [];
     const aspects: string[] = [];
@@ -465,13 +488,27 @@ export function generatePredictionsFromRasi(planets: PlanetData[], refRasiIdx: n
 
     const getHouseFromRef = (rasi: string) => ((RASI_INDEX_MAP[rasi] ?? RASIS.indexOf(rasi)) - refRasiIdx + 12) % 12 + 1;
 
+    const housePlanets: Record<number, string[]> = {};
+    const houseAspects: Record<number, string[]> = {};
+    for (let h = 1; h <= 12; h++) {
+        housePlanets[h] = [];
+        houseAspects[h] = [];
+    }
+
     for (let i = 0; i < planets.length; i++) {
         const p = planets[i];
         const n = p.name;
         if (n === "Ascendant" || n === "Gulika" || n === "Mandi" || n === "Dhuma" || n === "Vyatipata" || n === "Parivesha" || n === "Indrachapa" || n === "Upaketu" || n === "Kala" || n === "Mrityu" || n === "Ardhaprahara" || n === "Yamaghantaka") continue;
         const h = getHouseFromRef(p.rasi);
+        housePlanets[h].push(n);
+
         const status = p.vedha?.isObstructed ? ` (Obstructed by ${p.vedha.obstructingPlanet})` : "";
         placements.push(`${n} in House ${h} from ${refName}: ${getHouseTheme(h)}${status}`);
+
+        const aspected = getAspectedHouses(n, h);
+        for (let j = 0; j < aspected.length; j++) {
+            houseAspects[aspected[j]].push(n);
+        }
 
         if (n === "Sun" || n === "Moon" || n === "Mercury" || n === "Venus") {
             aspects.push(`${n} aspects House ${(h + 6) % 12 || 12} from ${refName}.`);
@@ -500,12 +537,176 @@ export function generatePredictionsFromRasi(planets: PlanetData[], refRasiIdx: n
         yogas.push("Guru Mangala Yoga: Mars and Jupiter conjunction. Drive for leadership.");
     }
 
-    return { placements, aspects, yogas };
+    const combined: CombinedPrediction[] = [];
+
+    // --- 1. Career & Ambition ---
+    const careerContributors: string[] = [];
+    const pIn10 = housePlanets[10];
+    const aIn10 = houseAspects[10];
+    for (let k = 0; k < pIn10.length; k++) careerContributors.push(`${pIn10[k]} in House 10`);
+    for (let k = 0; k < aIn10.length; k++) careerContributors.push(`${aIn10[k]} aspecting House 10`);
+    if (sun) careerContributors.push(`Sun in House ${getHouseFromRef(sun.rasi)}`);
+    if (jup) careerContributors.push(`Jupiter in House ${getHouseFromRef(jup.rasi)}`);
+
+    let careerDesc = "Based on classical principles from Phaladeepika (Ch. 14), your professional path is undergoing a significant energetic shift. ";
+    if (pIn10.length > 0) {
+        careerDesc += `The presence of ${pIn10.join(" and ")} directly in your 10th house of career creates a highly active environment, magnifying your professional desires and bringing these specific energies directly to your workplace. `;
+    } else {
+        careerDesc += "Although no major planets are directly transiting your 10th house of career, the baseline professional sector remains stable, letting you focus on foundation building. ";
+    }
+    if (aIn10.length > 0) {
+        careerDesc += `Furthermore, the aspects of ${aIn10.join(" and ")} onto the 10th house introduce external dynamics, driving you to adjust your strategies and balance your actions. `;
+    }
+    const sunHouse = sun ? getHouseFromRef(sun.rasi) : 1;
+    careerDesc += `The Sun, signifying your core authority and career drive, is transiting House ${sunHouse} from ${refName}, focusing your daily awareness on ${getHouseTheme(sunHouse).toLowerCase()}`;
+
+    combined.push({
+        title: "Dharma & Career Progression",
+        description: careerDesc,
+        type: "Career & Ambition",
+        contributors: careerContributors
+    });
+
+    // --- 2. Relationship & Social ---
+    const relContributors: string[] = [];
+    const pIn7 = housePlanets[7];
+    const aIn7 = houseAspects[7];
+    const pIn11 = housePlanets[11];
+    for (let k = 0; k < pIn7.length; k++) relContributors.push(`${pIn7[k]} in House 7`);
+    for (let k = 0; k < aIn7.length; k++) relContributors.push(`${aIn7[k]} aspecting House 7`);
+    for (let k = 0; k < pIn11.length; k++) relContributors.push(`${pIn11[k]} in House 11`);
+    if (ven) relContributors.push(`Venus in House ${getHouseFromRef(ven.rasi)}`);
+
+    let relDesc = "Drawing from Sage Parashara's Brihat Parashara Hora Shastra (Ch. 18), your relationships and social alignments are being actively re-evaluated. ";
+    if (pIn7.length > 0) {
+        relDesc += `With ${pIn7.join(" and ")} occupying your 7th house of partnerships, there is a strong focus on one-on-one relationships, demands from partners, or collaborative efforts. `;
+    } else {
+        relDesc += "With the 7th house of partnerships free of direct transits, relationships progress in a stable, familiar manner, allowing you to cultivate mutual understanding. ";
+    }
+    if (aIn7.length > 0) {
+        relDesc += `The aspects of ${aIn7.join(", ")} on the 7th house bring a mix of supportive or challenging external influences into your relational life, requiring mindful communication. `;
+    }
+    const venHouse = ven ? getHouseFromRef(ven.rasi) : 1;
+    relDesc += `Venus, the significator of harmony and love, transits House ${venHouse} from ${refName}, adding a layer of ${getHouseTheme(venHouse).toLowerCase().replace('.', '')} to your emotional expression. `;
+    if (pIn11.length > 0) {
+        relDesc += `Additionally, the presence of ${pIn11.join(" and ")} in your 11th house of community and gains enhances your social circles and network support.`;
+    }
+
+    combined.push({
+        title: "Kama & Relational Dynamics",
+        description: relDesc,
+        type: "Relationship & Social",
+        contributors: relContributors
+    });
+
+    // --- 3. Financial & Fortune ---
+    const finContributors: string[] = [];
+    const pIn2 = housePlanets[2];
+    const aIn2 = houseAspects[2];
+    const pIn11_fin = housePlanets[11];
+    const aIn11_fin = houseAspects[11];
+    for (let k = 0; k < pIn2.length; k++) finContributors.push(`${pIn2[k]} in House 2`);
+    for (let k = 0; k < aIn2.length; k++) finContributors.push(`${aIn2[k]} aspecting House 2`);
+    for (let k = 0; k < pIn11_fin.length; k++) finContributors.push(`${pIn11_fin[k]} in House 11`);
+    for (let k = 0; k < aIn11_fin.length; k++) finContributors.push(`${aIn11_fin[k]} aspecting House 11`);
+    if (jup) finContributors.push(`Jupiter in House ${getHouseFromRef(jup.rasi)}`);
+
+    let finDesc = "According to Jataka Parijata (Ch. 12), financial growth and prosperity depend on the active status of the 2nd (wealth) and 11th (gains) houses. ";
+    if (pIn2.length > 0 || pIn11_fin.length > 0) {
+        const combinedHouses = [...pIn2.map(p => `${p} in House 2`), ...pIn11_fin.map(p => `${p} in House 11`)];
+        finDesc += `The transit of ${combinedHouses.join(" and ")} activates your primary wealth houses, suggesting direct changes or active engagement in financial planning, investments, or career gains. `;
+    } else {
+        finDesc += "As your 2nd and 11th houses are currently unoccupied, your finances remain on a steady trajectory without sudden, unexpected fluctuations, giving you space to refine your long-term budgets. ";
+    }
+    if (aIn2.length > 0 || aIn11_fin.length > 0) {
+        const allAspects = [...aIn2.map(p => `${p} on House 2`), ...aIn11_fin.map(p => `${p} on House 11`)];
+        finDesc += `Auspicious or heavy aspects by ${allAspects.join(" and ")} bring subtle energetic adjustments to your material resources, indicating that careful planning is highly beneficial. `;
+    }
+    const jupHouse = jup ? getHouseFromRef(jup.rasi) : 1;
+    finDesc += `Jupiter, the natural karaka of wealth and expansion, is positioned in House ${jupHouse} from ${refName}, channeling growth, fortune, or deep wisdom toward ${getHouseTheme(jupHouse).toLowerCase()}`;
+
+    combined.push({
+        title: "Artha & Prosperity Forecast",
+        description: finDesc,
+        type: "Financial & Fortune",
+        contributors: finContributors
+    });
+
+    // --- 4. Health & Vitality ---
+    const healthContributors: string[] = [];
+    const pIn1 = housePlanets[1];
+    const pIn6 = housePlanets[6];
+    const aIn1 = houseAspects[1];
+    const aIn6 = houseAspects[6];
+    for (let k = 0; k < pIn1.length; k++) healthContributors.push(`${pIn1[k]} in House 1`);
+    for (let k = 0; k < pIn6.length; k++) healthContributors.push(`${pIn6[k]} in House 6`);
+    for (let k = 0; k < aIn1.length; k++) healthContributors.push(`${aIn1[k]} aspecting House 1`);
+    for (let k = 0; k < aIn6.length; k++) healthContributors.push(`${aIn6[k]} aspecting House 6`);
+    if (mars) healthContributors.push(`Mars in House ${getHouseFromRef(mars.rasi)}`);
+
+    let healthDesc = "Drawing from Brihat Parashara Hora Shastra (Ch. 11), your physical vitality and resilience are guided by the combined state of the 1st house of self and the 6th house of health/routines. ";
+    if (pIn1.length > 0) {
+        healthDesc += `The presence of ${pIn1.join(" and ")} directly in your 1st house strongly colors your physical energy, personality expression, and general well-being. `;
+    } else {
+        healthDesc += "Your 1st house is free of transiting planets, indicating stable health and vitality with no major sudden physical disruptions. ";
+    }
+    if (pIn6.length > 0) {
+        healthDesc += `With ${pIn6.join(" and ")} transiting the 6th house, pay closer attention to daily routines, diet, and minor physical stressors. `;
+    }
+    if (aIn1.length > 0 || aIn6.length > 0) {
+        const healthAspects = [...aIn1.map(p => `${p} aspecting House 1`), ...aIn6.map(p => `${p} aspecting House 6`)];
+        healthDesc += `The aspects of ${healthAspects.join(" and ")} indicate external factors influencing your daily physical stamina and mental state. `;
+    }
+    const marsHouse = mars ? getHouseFromRef(mars.rasi) : 1;
+    healthDesc += `Mars, casting its vitalizing and sharp energy, transits House ${marsHouse} from ${refName}, which brings a drive for physical action or a need to manage stress.`;
+
+    combined.push({
+        title: "Arogya & Vitality Alignment",
+        description: healthDesc,
+        type: "Health & Vitality",
+        contributors: healthContributors
+    });
+
+    // --- 5. Spiritual & Inner Growth ---
+    const spiritContributors: string[] = [];
+    const pIn9 = housePlanets[9];
+    const pIn12 = housePlanets[12];
+    const aIn9 = houseAspects[9];
+    const aIn12 = houseAspects[12];
+    for (let k = 0; k < pIn9.length; k++) spiritContributors.push(`${pIn9[k]} in House 9`);
+    for (let k = 0; k < pIn12.length; k++) spiritContributors.push(`${pIn12[k]} in House 12`);
+    for (let k = 0; k < aIn9.length; k++) spiritContributors.push(`${aIn9[k]} aspecting House 9`);
+    for (let k = 0; k < aIn12.length; k++) spiritContributors.push(`${aIn12[k]} aspecting House 12`);
+    const ketu = getP("Ketu");
+    if (ketu) spiritContributors.push(`Ketu in House ${getHouseFromRef(ketu.rasi)}`);
+
+    let spiritDesc = "As guided by Phaladeepika (Ch. 20), spiritual expansion, higher wisdom, and the dissolution of ego are triggered when the 9th and 12th houses are activated. ";
+    if (pIn9.length > 0 || pIn12.length > 0) {
+        const spiritualHouses = [...pIn9.map(p => `${p} in House 9`), ...pIn12.map(p => `${p} in House 12`)];
+        spiritDesc += `The transit of ${spiritualHouses.join(" and ")} stimulates your connection to higher learning, philosophy, or introspective practices. `;
+    } else {
+        spiritDesc += "With the 9th and 12th houses quiet, your spiritual journey is peaceful, focusing on stable, daily integration of existing wisdom rather than intense mystical experiences. ";
+    }
+    if (aIn9.length > 0 || aIn12.length > 0) {
+        const spiritAspects = [...aIn9.map(p => `${p} aspecting House 9`), ...aIn12.map(p => `${p} aspecting House 12`)];
+        spiritDesc += `The subtle aspect of ${spiritAspects.join(" and ")} encourages you to look within, seek quietude, and pursue philosophical studies. `;
+    }
+    const ketuHouse = ketu ? getHouseFromRef(ketu.rasi) : 1;
+    spiritDesc += `Ketu, the cosmic indicator of detachment and moksha, is transiting House ${ketuHouse} from ${refName}, urging you to release worldly attachments and embrace a deeper sense of inner peace.`;
+
+    combined.push({
+        title: "Moksha & Spiritual Evolution",
+        description: spiritDesc,
+        type: "Spiritual & Inner Growth",
+        contributors: spiritContributors
+    });
+
+    return { placements, aspects, yogas, combined };
 }
 
 export function generatePredictions(planets: PlanetData[], refPlanetName: "Moon" | "Ascendant" = "Moon"): Predictions {
     const refPlanet = planets.find(p => p.name === refPlanetName);
-    if (!refPlanet) return { placements: [], aspects: [], yogas: [] };
+    if (!refPlanet) return { placements: [], aspects: [], yogas: [], combined: [] };
     const refRasiIdx = RASI_INDEX_MAP[refPlanet.rasi] ?? RASIS.indexOf(refPlanet.rasi);
     return generatePredictionsFromRasi(planets, refRasiIdx, refPlanetName);
 }
