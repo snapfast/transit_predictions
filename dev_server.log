@@ -5,8 +5,12 @@
 ▲ Next.js 16.2.9 (Turbopack)
 - Local:         http://localhost:3000
 - Network:       http://192.168.0.2:3000
-✓ Ready in 580ms
+✓ Ready in 613ms
+Attention: Next.js now collects completely anonymous telemetry regarding usage.
+This information is used to shape Next.js' roadmap and prioritize features.
+You can learn more, including how to opt-out if you'd not like to participate in this anonymous program, by visiting the following URL:
+https://nextjs.org/telemetry
+
 
 ○ Compiling / ...
- GET / 200 in 4.9s (next.js: 4.3s, application-code: 590ms)
- GET / 200 in 76ms (next.js: 6ms, application-code: 70ms)
+ GET / 200 in 5.4s (next.js: 4.8s, application-code: 586ms)

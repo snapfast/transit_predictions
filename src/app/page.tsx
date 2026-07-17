@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, KeyboardEvent, useMemo } from "react";
-import { calculateTransits, PlanetData, DivisionalChartData, Predictions, DashaInfo, SadeSatiInfo, Remedy, AyanamsaType, AshtakavargaData } from "@/lib/astrology";
+import { calculateTransits, getRotatedChart, PlanetData, DivisionalChartData, Predictions, DashaInfo, SadeSatiInfo, Remedy, AyanamsaType, AshtakavargaData } from "@/lib/astrology";
 import KundliChart, { ChartStyle } from "@/components/KundliChart";
 import { Clock, MapPin, Calendar, Sun, Info, Sparkles, User, Navigation, ChevronUp, Settings, Edit2 } from "lucide-react";
 
@@ -100,6 +100,7 @@ export default function Home() {
   const [dasha, setDasha] = useState<DashaInfo | undefined>(undefined);
   const [sadeSati, setSadeSati] = useState<SadeSatiInfo | undefined>(undefined);
   const [natalChart, setNatalChart] = useState<DivisionalChartData | null>(null);
+  const [natalPlanets, setNatalPlanets] = useState<PlanetData[]>([]);
   const [gocharaScore, setGocharaScore] = useState<number>(50);
   const [timelineScores, setTimelineScores] = useState<number[]>([]);
   const [timelineEvents, setTimelineEvents] = useState<Array<{ day: number, label: string }>>([]);
@@ -334,6 +335,7 @@ export default function Home() {
             const natal = calculateTransits(birthDetails.date, birthDetails.lat, birthDetails.lon, undefined, ayanamsa);
             setNatalChart(natal.d1);
             setNatalChartWithUpgrahas(natal.d1WithUpgrahas || null);
+            setNatalPlanets(natal.planets);
         }
       });
     }, 50); // Minimal 50ms delay for ultra-fast, snappy scrubbing response
@@ -409,6 +411,46 @@ export default function Home() {
     }
     return map;
   }, [predictionsMoon, predictionsLagna, predictionReference]);
+
+  const natalMoonRasiIdx = useMemo(() => {
+    const m = natalPlanets.find(p => p.name === "Moon");
+    if (!m) return 0;
+    const map: Record<string, number> = { "Aries": 0, "Taurus": 1, "Gemini": 2, "Cancer": 3, "Leo": 4, "Virgo": 5, "Libra": 6, "Scorpio": 7, "Sagittarius": 8, "Capricorn": 9, "Aquarius": 10, "Pisces": 11 };
+    return map[m.rasi] ?? 0;
+  }, [natalPlanets]);
+
+  const natalLagnaRasiIdx = useMemo(() => {
+    const l = natalPlanets.find(p => p.name === "Ascendant");
+    if (!l) return 0;
+    const map: Record<string, number> = { "Aries": 0, "Taurus": 1, "Gemini": 2, "Cancer": 3, "Leo": 4, "Virgo": 5, "Libra": 6, "Scorpio": 7, "Sagittarius": 8, "Capricorn": 9, "Aquarius": 10, "Pisces": 11 };
+    return map[l.rasi] ?? 0;
+  }, [natalPlanets]);
+
+  const transitMoonRasiIdx = useMemo(() => {
+    const m = planets.find(p => p.name === "Moon");
+    if (!m) return 0;
+    const map: Record<string, number> = { "Aries": 0, "Taurus": 1, "Gemini": 2, "Cancer": 3, "Leo": 4, "Virgo": 5, "Libra": 6, "Scorpio": 7, "Sagittarius": 8, "Capricorn": 9, "Aquarius": 10, "Pisces": 11 };
+    return map[m.rasi] ?? 0;
+  }, [planets]);
+
+  const transitLagnaRasiIdx = useMemo(() => {
+    const l = planets.find(p => p.name === "Ascendant");
+    if (!l) return 0;
+    const map: Record<string, number> = { "Aries": 0, "Taurus": 1, "Gemini": 2, "Cancer": 3, "Leo": 4, "Virgo": 5, "Libra": 6, "Scorpio": 7, "Sagittarius": 8, "Capricorn": 9, "Aquarius": 10, "Pisces": 11 };
+    return map[l.rasi] ?? 0;
+  }, [planets]);
+
+  const predictionNatalChart = useMemo(() => {
+    if (!natalPlanets || natalPlanets.length === 0) return null;
+    const refRasiIdx = predictionReference === "Moon" ? natalMoonRasiIdx : natalLagnaRasiIdx;
+    return getRotatedChart(natalPlanets, refRasiIdx);
+  }, [natalPlanets, predictionReference, natalMoonRasiIdx, natalLagnaRasiIdx]);
+
+  const predictionTransitChart = useMemo(() => {
+    if (!planets || planets.length === 0) return null;
+    const refRasiIdx = predictionReference === "Moon" ? transitMoonRasiIdx : transitLagnaRasiIdx;
+    return getRotatedChart(planets, refRasiIdx);
+  }, [planets, predictionReference, transitMoonRasiIdx, transitLagnaRasiIdx]);
 
   const timelinePathStr = useMemo(() => {
     if (timelineScores.length === 0) return "";
@@ -829,6 +871,97 @@ export default function Home() {
                 </div>
               </div>
             </header>
+
+            {/* Context & Chart Integration Section */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+              {/* Informative Explanation of Predict vs Deep */}
+              <div className="bg-white p-6 md:p-8 rounded-[2.5rem] border border-[#1D4046]/10 shadow-sm flex flex-col justify-between space-y-6">
+                <div className="space-y-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-[#F59E0B]/10 flex items-center justify-center">
+                      <Info aria-hidden="true" className="w-5 h-5 text-[#F59E0B]" />
+                    </div>
+                    <h2 className="text-xl font-serif text-[#1D4046] font-bold">Predictive Methodology</h2>
+                  </div>
+                  <p className="text-xs text-[#1D4046]/50 uppercase tracking-widest font-bold">How Predict differs from &ldquo;Deep&rdquo;</p>
+                  <p className="text-sm text-[#1D4046]/80 leading-relaxed">
+                    This <strong>Predict</strong> tab displays synthesized interpretations across five major life domains and remedies (Upayas). It uses <strong>reference-aligned</strong> charts (rotated relative to your selected reference point: Chandra Lagna or Janma Lagna) to map Gochara (transits) to specific natal houses.
+                  </p>
+                  <p className="text-sm text-[#1D4046]/80 leading-relaxed">
+                    The <strong>Deep</strong> tab, on the other hand, is a technical, analytical workspace. It displays the natal, transit, D9, and D60 divisional charts oriented strictly to the <strong>Ascendant (Lagna)</strong>, along with detailed tables (SAV/BAV, Upgrahas) to ensure fixed alignment for professional mathematical analysis.
+                  </p>
+                </div>
+                <div className="pt-4 border-t border-[#1D4046]/5 space-y-3">
+                  <div className="text-[10px] font-bold text-[#1D4046]/40 uppercase tracking-wider">Active Prediction Reference</div>
+                  <div className="text-sm font-bold flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-[#F59E0B]" />
+                    {predictionReference === "Moon" ? "Chandra Lagna (Moon-Aligned)" : "Janma Lagna (Ascendant-Aligned)"}
+                  </div>
+                  <p className="text-xs text-[#1D4046]/60 leading-relaxed">
+                    The charts to the right are rotated so that the 1st House represents your natal {predictionReference === "Moon" ? "Moon Sign (Chandra)" : "Ascendant Sign (Lagna)"}.
+                  </p>
+                </div>
+              </div>
+
+              {/* Prediction Charts display */}
+              <div className="lg:col-span-2 bg-white p-6 md:p-8 rounded-[2.5rem] border border-[#1D4046]/10 shadow-sm space-y-6">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                  <div>
+                    <h2 className="text-xl font-serif text-[#1D4046] font-bold">Prediction Charts (Reference-Aligned)</h2>
+                    <p className="text-xs text-[#1D4046]/50">Visualizing transits relative to the {predictionReference === "Moon" ? "Moon Sign" : "Ascendant"}</p>
+                  </div>
+                  <div className="flex bg-[#F9F7F1] rounded-lg border border-[#1D4046]/10 p-1" role="group" aria-label="Select Prediction Chart Style">
+                    {["North", "South"].map(s => (
+                      <button
+                        key={s}
+                        aria-pressed={chartStyle === s}
+                        onClick={() => setChartStyle(s as ChartStyle)}
+                        className={`px-3 py-1 text-xs rounded-md transition-all font-semibold ${chartStyle === s ? 'bg-[#F59E0B] text-white shadow-sm' : 'text-[#1D4046]/60 hover:bg-white'}`}
+                      >
+                        {s}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Reference Natal Chart */}
+                  <div className="bg-[#F9F7F1]/40 p-4 rounded-2xl border border-[#1D4046]/5 space-y-4">
+                    <h3 className="text-center font-serif text-sm font-bold text-[#F59E0B]">
+                      Natal: {predictionReference === "Moon" ? "Chandra Lagna" : "Janma Lagna"}
+                    </h3>
+                    {predictionNatalChart ? (
+                      <KundliChart
+                        data={predictionNatalChart}
+                        style={chartStyle}
+                      />
+                    ) : (
+                      <div className="aspect-square w-full max-w-[300px] mx-auto bg-white/50 rounded-xl border border-dashed border-[#1D4046]/10 flex flex-col items-center justify-center p-4 text-center">
+                        <User className="w-8 h-8 text-[#1D4046]/30 mb-2" />
+                        <span className="text-xs text-[#1D4046]/50 font-bold">Set birth details to load Natal Chart</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Reference Transit Chart */}
+                  <div className="bg-[#F9F7F1]/40 p-4 rounded-2xl border border-[#1D4046]/5 space-y-4">
+                    <h3 className="text-center font-serif text-sm font-bold text-[#1D4046]">
+                      Transit: Gochara (Rotated)
+                    </h3>
+                    {predictionTransitChart ? (
+                      <KundliChart
+                        data={predictionTransitChart}
+                        style={chartStyle}
+                      />
+                    ) : (
+                      <div className="aspect-square w-full max-w-[300px] mx-auto bg-white/50 rounded-xl border border-dashed border-[#1D4046]/10 flex items-center justify-center text-xs text-[#1D4046]/40 italic">
+                        Calculating...
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
 
             {/* Combined & Synthesized Predictions */}
             <div className="space-y-6">
