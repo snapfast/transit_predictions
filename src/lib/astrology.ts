@@ -241,6 +241,7 @@ export interface DashaInfo {
     mahadasha: DashaLevel;
     antardasha: DashaLevel;
     pratyantardasha: DashaLevel;
+    sookshmadasha: DashaLevel;
 }
 
 export interface SadeSatiInfo {
@@ -427,16 +428,36 @@ export function calculateVimshottariDasha(birthDate: Date, moonLongitude: number
                 const pdDurationMs = (DASHA_PERIODS[pdIdx] / totalCycle) * adDurationActual;
                 const pdEnd = new Date(pdStart.getTime() + pdDurationMs);
                 if (pdEnd > targetDate) {
-                    return { mahadasha: currentMahadasha, antardasha: currentAD, pratyantardasha: { lord: pdLord, start: pdStart, end: pdEnd } };
+                    const currentPD = { lord: pdLord, start: pdStart, end: pdEnd };
+                    const pdDurationActual = pdEnd.getTime() - pdStart.getTime();
+                    let sdStart = new Date(pdStart);
+                    for (let k = 0; k < 9; k++) {
+                        const sdIdx = (pdIdx + k) % 9;
+                        const sdLord = DASHA_LORDS[sdIdx];
+                        const sdDurationMs = (DASHA_PERIODS[sdIdx] / totalCycle) * pdDurationActual;
+                        const sdEnd = new Date(sdStart.getTime() + sdDurationMs);
+                        if (sdEnd > targetDate) {
+                            return {
+                                mahadasha: currentMahadasha,
+                                antardasha: currentAD,
+                                pratyantardasha: currentPD,
+                                sookshmadasha: { lord: sdLord, start: sdStart, end: sdEnd }
+                            };
+                        }
+                        sdStart = sdEnd;
+                    }
+                    const fallbackSD = { lord: pdLord, start: pdStart, end: pdEnd };
+                    return { mahadasha: currentMahadasha, antardasha: currentAD, pratyantardasha: currentPD, sookshmadasha: fallbackSD };
                 }
                 pdStart = pdEnd;
             }
-            return { mahadasha: currentMahadasha, antardasha: currentAD, pratyantardasha: { lord: adLord, start: adStart, end: adEnd } };
+            const fallbackPD = { lord: adLord, start: adStart, end: adEnd };
+            return { mahadasha: currentMahadasha, antardasha: currentAD, pratyantardasha: fallbackPD, sookshmadasha: fallbackPD };
         }
         adStart = adEnd;
     }
     const fallback = { lord: DASHA_LORDS[currentLordIndex], start: currentDate, end: dashaEnd };
-    return { mahadasha: currentMahadasha, antardasha: fallback, pratyantardasha: fallback };
+    return { mahadasha: currentMahadasha, antardasha: fallback, pratyantardasha: fallback, sookshmadasha: fallback };
 }
 
 export function calculateSadeSati(natalMoonLongitude: number, transitSaturnLongitude: number): SadeSatiInfo {

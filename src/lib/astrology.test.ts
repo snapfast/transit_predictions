@@ -31,5 +31,10 @@ test('calculateVimshottariDasha', () => {
 
     assert.ok(result.mahadasha);
     assert.ok(result.antardasha);
+    assert.ok(result.pratyantardasha);
+    assert.ok(result.sookshmadasha);
     console.log(`Current Mahadasha for 1990 birth in Ashwini: ${result.mahadasha.lord}`);
+    console.log(`Current Antardasha: ${result.antardasha.lord}`);
+    console.log(`Current Pratyantardasha: ${result.pratyantardasha.lord}`);
+    console.log(`Current Sookshmadasha: ${result.sookshmadasha.lord}`);
 });
