@@ -46,6 +46,9 @@ export default function Home() {
   const [transitLon, setTransitLon] = useState<number>(77.2090);
   const [transitPob, setTransitPob] = useState<string>("New Delhi, Delhi, India");
 
+  // UI State - moved scrubDays up before getScrubbedDateStr definition
+  const [scrubDays, setScrubDays] = useState<number>(0);
+
   // City Search State
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [showSuggestionsFor, setShowSuggestionsFor] = useState<"birth" | "transit" | null>(null);
@@ -55,14 +58,16 @@ export default function Home() {
   const svgRef = useRef<SVGSVGElement>(null);
 
   // Helper to calculate the scrubbed date string dynamically
-  const getScrubbedDateStr = () => {
-    if (!transitDateStr || !transitTimeStr) return "";
-    const [ty, tm, td] = transitDateStr.split('-').map(Number);
-    const [th, tmin] = transitTimeStr.split(':').map(Number);
-    const base = new Date(ty, tm - 1, td, th, tmin);
-    const scrubbed = new Date(base.getTime() + scrubDays * 24 * 60 * 60 * 1000);
-    return scrubbed.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
-  };
+  const getScrubbedDateStr = useMemo(() => {
+    return () => {
+      if (!transitDateStr || !transitTimeStr) return "";
+      const [ty, tm, td] = transitDateStr.split('-').map(Number);
+      const [th, tmin] = transitTimeStr.split(':').map(Number);
+      const base = new Date(ty, tm - 1, td, th, tmin);
+      const scrubbed = new Date(base.getTime() + scrubDays * 24 * 60 * 60 * 1000);
+      return scrubbed.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+    };
+  }, [transitDateStr, transitTimeStr, scrubDays]);
 
   // Helper to handle timeline click/drag scrub interactions
   const handleSvgInteraction = (clientX: number) => {
@@ -121,9 +126,21 @@ export default function Home() {
   const [referencePoint, setReferencePoint] = useState<"Moon" | "Lagna" | "Dasha Lord">("Moon");
   const [predictionReference, setPredictionReference] = useState<"Moon" | "Lagna">("Moon");
   const [chartStyle, setChartStyle] = useState<ChartStyle>("North");
-  const [scrubDays, setScrubDays] = useState<number>(0);
   const [isInitialized, setIsInitialized] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(true);
+  const [expandedChart, setExpandedChart] = useState<{ data: DivisionalChartData, title: string, highlightedHouses?: number[] } | null>(null);
+  const [predictionsViewMode, setPredictionsViewMode] = useState<"summary" | "detailed">("detailed");
+
+  const getHighlightedHousesForType = (type: string): number[] => {
+    switch (type) {
+      case "Career & Ambition": return [1, 10];
+      case "Relationship & Social": return [7, 11];
+      case "Financial & Fortune": return [2, 11];
+      case "Health & Vitality": return [1, 6];
+      case "Spiritual & Inner Growth": return [9, 12];
+      default: return [];
+    }
+  };
 
   const getActiveTransitDate = () => {
     if (!transitDateStr || !transitTimeStr) return new Date();
@@ -451,6 +468,85 @@ export default function Home() {
     const refRasiIdx = predictionReference === "Moon" ? transitMoonRasiIdx : transitLagnaRasiIdx;
     return getRotatedChart(planets, refRasiIdx);
   }, [planets, predictionReference, transitMoonRasiIdx, transitLagnaRasiIdx]);
+
+  const getWhyThisPredictionDetails = useMemo(() => {
+    return (type: string, contributors: string[]) => {
+      const activePlanets = planets;
+      const signals: string[] = [];
+      const breakdown: string[] = ["Base Confidence: 65%"];
+      let score = 65;
+
+      // 1. Dasha Influence
+      if (dasha) {
+        const mdLord = dasha.mahadasha.lord;
+        const isMdContrib = contributors.some(c => c.toLowerCase().includes(mdLord.toLowerCase()));
+        if (isMdContrib) {
+          score += 10;
+          breakdown.push(`+10% Active Mahadasha Lord (${mdLord})`);
+          signals.push(`Mahadasha Lord ${mdLord} activates this life domain.`);
+        }
+      }
+
+      // 2. SAV Influence
+      if (ashtakavarga) {
+        let primaryHouse = 1;
+        if (type === "Career & Ambition") primaryHouse = 10;
+        else if (type === "Relationship & Social") primaryHouse = 7;
+        else if (type === "Financial & Fortune") primaryHouse = 2;
+        else if (type === "Health & Vitality") primaryHouse = 1;
+        else if (type === "Spiritual & Inner Growth") primaryHouse = 9;
+
+        const houseRasis = predictionReference === "Moon" ? (predictionNatalChart?.houseRasis || {}) : (predictionNatalChart?.houseRasis || {});
+        const rasiIdx = houseRasis[primaryHouse] ? houseRasis[primaryHouse] - 1 : -1;
+        if (rasiIdx !== -1) {
+          const bindus = ashtakavarga.sav[rasiIdx];
+          if (bindus >= 28) {
+            score += 10;
+            breakdown.push(`+10% Strong SAV score (${bindus} Bindus)`);
+            signals.push(`High SAV strength (${bindus} points) in primary house ${primaryHouse}.`);
+          } else if (bindus <= 24) {
+            score -= 10;
+            breakdown.push(`-10% Low SAV score (${bindus} Bindus)`);
+            signals.push(`Weak SAV strength (${bindus} points) in primary house ${primaryHouse}.`);
+          } else {
+            signals.push(`Moderate SAV strength (${bindus} points) in primary house ${primaryHouse}.`);
+          }
+        }
+      }
+
+      // 3. Vedha / Obstruction Influence
+      let obstructedCount = 0;
+      contributors.forEach(c => {
+        const planetName = c.split(' ')[0];
+        const pData = activePlanets.find(p => p.name === planetName);
+        if (pData?.vedha?.isObstructed) {
+          obstructedCount++;
+          signals.push(`${planetName} transit is currently obstructed by ${pData.vedha.obstructingPlanet} (Vedha).`);
+        } else if (pData) {
+          signals.push(`${planetName} is transiting House ${pData.house} from ${predictionReference}.`);
+        }
+      });
+      if (obstructedCount > 0) {
+        const penalty = obstructedCount * 12;
+        score -= penalty;
+        breakdown.push(`-${penalty}% Vedha Transit Obstruction`);
+      }
+
+      score = Math.min(100, Math.max(30, score));
+
+      return {
+        score,
+        signals,
+        breakdown,
+        assumptions: [
+          `Ayanamsa System: Lahiri (Chitra Paksha)`,
+          `Baseline Reference: ${predictionReference === "Moon" ? "Chandra Lagna (Moon-centric)" : "Janma Lagna (Ascendant-centric)"}`,
+          `Calculation Date: ${getScrubbedDateStr()}`,
+          `Location Coordinate: Lat ${birthLat.toFixed(4)}, Lon ${birthLon.toFixed(4)}`
+        ]
+      };
+    };
+  }, [planets, dasha, ashtakavarga, predictionReference, predictionNatalChart, birthLat, birthLon, getScrubbedDateStr]);
 
   const timelinePathStr = useMemo(() => {
     if (timelineScores.length === 0) return "";
@@ -863,8 +959,44 @@ export default function Home() {
 
         {activeTab === "predictions" && (
           <div className="space-y-8 animate-in fade-in duration-500">
+            {/* Header Banner explaining the page's exact purpose vs Deep page */}
+            <div className="bg-gradient-to-r from-[#1D4046] to-[#254F56] text-white p-8 md:p-10 rounded-[2.5rem] shadow-xl space-y-4 select-none relative overflow-hidden">
+              <div className="absolute right-0 top-0 translate-x-12 -translate-y-12 w-64 h-64 rounded-full bg-white/5 blur-3xl" />
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center">
+                  <Sparkles className="w-6 h-6 text-[#F59E0B]" />
+                </div>
+                <div>
+                  <h1 className="text-3xl md:text-4xl font-serif tracking-tight text-white font-bold">Actionable Forecasts & Synthesis</h1>
+                  <p className="text-xs font-bold text-white/60 uppercase tracking-[0.2em] mt-1">Predictions Hub</p>
+                </div>
+              </div>
+              <p className="text-sm md:text-base text-white/80 max-w-3xl leading-relaxed">
+                Welcome to your astrological forecast workspace. Unlike the analytical, technical positions on the <strong>Deep</strong> page, this view synthesizes transits, aspects, conjunctions, and dasha alignments relative to your {predictionReference === "Moon" ? "Moon Sign (Chandra Lagna)" : "Ascendant Sign (Janma Lagna)"} to produce actionable, classical interpretations.
+              </p>
+              <div className="flex flex-col sm:flex-row gap-4 pt-4 border-t border-white/10 items-start sm:items-center justify-between">
+                <div className="flex items-center gap-2 text-xs text-[#F59E0B] font-bold uppercase tracking-wider">
+                  <Info className="w-4 h-4" /> Supporting reference-aligned charts are highlighted for target areas
+                </div>
+                <div className="flex gap-2 bg-white/10 p-1 rounded-lg">
+                  <button
+                    onClick={() => setPredictionsViewMode("summary")}
+                    className={`px-4 py-1.5 text-xs rounded-md transition-all font-bold ${predictionsViewMode === "summary" ? 'bg-[#F59E0B] text-white shadow' : 'text-white/60 hover:text-white'}`}
+                  >
+                    Summary View
+                  </button>
+                  <button
+                    onClick={() => setPredictionsViewMode("detailed")}
+                    className={`px-4 py-1.5 text-xs rounded-md transition-all font-bold ${predictionsViewMode === "detailed" ? 'bg-[#F59E0B] text-white shadow' : 'text-white/60 hover:text-white'}`}
+                  >
+                    Detailed View
+                  </button>
+                </div>
+              </div>
+            </div>
+
             <header className="flex flex-col md:flex-row justify-between items-center gap-4 select-none">
-              <h1 className="text-4xl font-serif text-[#1D4046] tracking-tight select-none">Predictions</h1>
+              <h2 className="text-2xl font-serif text-[#1D4046] tracking-tight font-bold">Configure Predictive Baseline</h2>
               <div className="flex flex-wrap gap-4">
                 <div className="flex bg-white rounded-lg border border-[#1D4046]/10 p-1 shadow-sm" role="group" aria-label="Select Prediction Reference">
                   {["Moon", "Lagna"].map(r => <button key={r} aria-pressed={predictionReference === r} onClick={() => setPredictionReference(r as "Moon" | "Lagna")} className={`px-3 py-1 text-xs rounded-md transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F59E0B] ${predictionReference === r ? 'bg-[#1D4046] text-white font-bold' : 'text-[#1D4046]/60 hover:bg-[#F9F7F1]'}`}>From {r}</button>)}
@@ -872,135 +1004,170 @@ export default function Home() {
               </div>
             </header>
 
-            {/* Context & Chart Integration Section */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-              {/* Informative Explanation of Predict vs Deep */}
-              <div className="bg-white p-6 md:p-8 rounded-[2.5rem] border border-[#1D4046]/10 shadow-sm flex flex-col justify-between space-y-6">
-                <div className="space-y-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-[#F59E0B]/10 flex items-center justify-center">
-                      <Info aria-hidden="true" className="w-5 h-5 text-[#F59E0B]" />
-                    </div>
-                    <h2 className="text-xl font-serif text-[#1D4046] font-bold">Predictive Methodology</h2>
-                  </div>
-                  <p className="text-xs text-[#1D4046]/50 uppercase tracking-widest font-bold">How Predict differs from &ldquo;Deep&rdquo;</p>
-                  <p className="text-sm text-[#1D4046]/80 leading-relaxed">
-                    This <strong>Predict</strong> tab displays synthesized interpretations across five major life domains and remedies (Upayas). It uses <strong>reference-aligned</strong> charts (rotated relative to your selected reference point: Chandra Lagna or Janma Lagna) to map Gochara (transits) to specific natal houses.
-                  </p>
-                  <p className="text-sm text-[#1D4046]/80 leading-relaxed">
-                    The <strong>Deep</strong> tab, on the other hand, is a technical, analytical workspace. It displays the natal, transit, D9, and D60 divisional charts oriented strictly to the <strong>Ascendant (Lagna)</strong>, along with detailed tables (SAV/BAV, Upgrahas) to ensure fixed alignment for professional mathematical analysis.
-                  </p>
-                </div>
-                <div className="pt-4 border-t border-[#1D4046]/5 space-y-3">
-                  <div className="text-[10px] font-bold text-[#1D4046]/40 uppercase tracking-wider">Active Prediction Reference</div>
-                  <div className="text-sm font-bold flex items-center gap-2">
-                    <span className="w-2.5 h-2.5 rounded-full bg-[#F59E0B]" />
-                    {predictionReference === "Moon" ? "Chandra Lagna (Moon-Aligned)" : "Janma Lagna (Ascendant-Aligned)"}
-                  </div>
-                  <p className="text-xs text-[#1D4046]/60 leading-relaxed">
-                    The charts to the right are rotated so that the 1st House represents your natal {predictionReference === "Moon" ? "Moon Sign (Chandra)" : "Ascendant Sign (Lagna)"}.
-                  </p>
-                </div>
-              </div>
-
-              {/* Prediction Charts display */}
-              <div className="lg:col-span-2 bg-white p-6 md:p-8 rounded-[2.5rem] border border-[#1D4046]/10 shadow-sm space-y-6">
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                  <div>
-                    <h2 className="text-xl font-serif text-[#1D4046] font-bold">Prediction Charts (Reference-Aligned)</h2>
-                    <p className="text-xs text-[#1D4046]/50">Visualizing transits relative to the {predictionReference === "Moon" ? "Moon Sign" : "Ascendant"}</p>
-                  </div>
-                  <div className="flex bg-[#F9F7F1] rounded-lg border border-[#1D4046]/10 p-1" role="group" aria-label="Select Prediction Chart Style">
-                    {["North", "South"].map(s => (
-                      <button
-                        key={s}
-                        aria-pressed={chartStyle === s}
-                        onClick={() => setChartStyle(s as ChartStyle)}
-                        className={`px-3 py-1 text-xs rounded-md transition-all font-semibold ${chartStyle === s ? 'bg-[#F59E0B] text-white shadow-sm' : 'text-[#1D4046]/60 hover:bg-white'}`}
-                      >
-                        {s}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {/* Reference Natal Chart */}
-                  <div className="bg-[#F9F7F1]/40 p-4 rounded-2xl border border-[#1D4046]/5 space-y-4">
-                    <h3 className="text-center font-serif text-sm font-bold text-[#F59E0B]">
-                      Natal: {predictionReference === "Moon" ? "Chandra Lagna" : "Janma Lagna"}
-                    </h3>
-                    {predictionNatalChart ? (
-                      <KundliChart
-                        data={predictionNatalChart}
-                        style={chartStyle}
-                      />
-                    ) : (
-                      <div className="aspect-square w-full max-w-[300px] mx-auto bg-white/50 rounded-xl border border-dashed border-[#1D4046]/10 flex flex-col items-center justify-center p-4 text-center">
-                        <User className="w-8 h-8 text-[#1D4046]/30 mb-2" />
-                        <span className="text-xs text-[#1D4046]/50 font-bold">Set birth details to load Natal Chart</span>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Reference Transit Chart */}
-                  <div className="bg-[#F9F7F1]/40 p-4 rounded-2xl border border-[#1D4046]/5 space-y-4">
-                    <h3 className="text-center font-serif text-sm font-bold text-[#1D4046]">
-                      Transit: Gochara (Rotated)
-                    </h3>
-                    {predictionTransitChart ? (
-                      <KundliChart
-                        data={predictionTransitChart}
-                        style={chartStyle}
-                      />
-                    ) : (
-                      <div className="aspect-square w-full max-w-[300px] mx-auto bg-white/50 rounded-xl border border-dashed border-[#1D4046]/10 flex items-center justify-center text-xs text-[#1D4046]/40 italic">
-                        Calculating...
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
-
             {/* Combined & Synthesized Predictions */}
             <div className="space-y-6">
               <h2 className="text-xs font-bold text-[#1D4046]/60 uppercase tracking-[0.3em] flex items-center gap-3 select-none">
                 <div className="h-px w-8 bg-[#F59E0B]/40" /> Combined & Synthesized Insights
               </h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                {(predictionReference === "Moon" ? predictionsMoon : predictionsLagna).combined?.map((pred, i) => (
-                  <div key={i} className="bg-white p-8 rounded-[2.5rem] border border-[#1D4046]/10 shadow-sm hover:shadow-md transition-all border-t-4 border-t-[#F59E0B] flex flex-col justify-between">
-                    <div>
-                      <div className="flex flex-wrap items-center justify-between gap-2 mb-4 select-none">
-                        <span className={`text-[10px] font-bold tracking-widest uppercase px-3 py-1 rounded-full border ${
-                          pred.type === "Career & Ambition" ? "bg-blue-50 text-blue-700 border-blue-100" :
-                          pred.type === "Relationship & Social" ? "bg-pink-50 text-pink-700 border-pink-100" :
-                          pred.type === "Financial & Fortune" ? "bg-amber-50 text-amber-700 border-amber-100" :
-                          pred.type === "Health & Vitality" ? "bg-emerald-50 text-emerald-700 border-emerald-100" :
-                          "bg-purple-50 text-purple-700 border-purple-100"
-                        }`}>
-                          {pred.type}
-                        </span>
-                      </div>
-                      <h3 className="font-serif text-2xl font-bold text-[#1D4046] mb-4">{pred.title}</h3>
-                      <p className="text-sm text-[#1D4046]/80 leading-relaxed mb-6">{pred.description}</p>
-                    </div>
+              <div className="grid grid-cols-1 gap-12">
+                {(predictionReference === "Moon" ? predictionsMoon : predictionsLagna).combined?.map((pred, i) => {
+                  const targetHighlightHouses = getHighlightedHousesForType(pred.type);
+                  const whyDetails = getWhyThisPredictionDetails(pred.type, pred.contributors);
 
-                    {pred.contributors.length > 0 && (
-                      <div className="pt-4 border-t border-[#1D4046]/5">
-                        <div className="text-[10px] font-bold text-[#1D4046]/40 uppercase tracking-wider mb-2 select-none">Astrological Contributors</div>
-                        <div className="flex flex-wrap gap-1.5">
-                          {pred.contributors.map((contrib, cIdx) => (
-                            <span key={cIdx} className="bg-[#1D4046]/5 px-2.5 py-1 text-[10px] font-bold text-[#1D4046]/70 rounded-full select-none">
-                              {contrib}
+                  return (
+                    <div key={i} className="bg-white p-8 md:p-10 rounded-[2.5rem] border border-[#1D4046]/10 shadow-sm hover:shadow-md transition-all border-t-4 border-t-[#F59E0B] grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+                      {/* Left Column: Predictions text */}
+                      <div className="lg:col-span-7 space-y-6">
+                        <div className="flex flex-wrap items-center justify-between gap-2 select-none">
+                          <span className={`text-[10px] font-bold tracking-widest uppercase px-3 py-1 rounded-full border ${
+                            pred.type === "Career & Ambition" ? "bg-blue-50 text-blue-700 border-blue-100" :
+                            pred.type === "Relationship & Social" ? "bg-pink-50 text-pink-700 border-pink-100" :
+                            pred.type === "Financial & Fortune" ? "bg-amber-50 text-amber-700 border-amber-100" :
+                            pred.type === "Health & Vitality" ? "bg-emerald-50 text-emerald-700 border-emerald-100" :
+                            "bg-purple-50 text-purple-700 border-purple-100"
+                          }`}>
+                            {pred.type}
+                          </span>
+
+                          <div className="flex items-center gap-2">
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-[#1D4046]/50">Confidence:</span>
+                            <span className={`text-xs font-extrabold px-2.5 py-0.5 rounded-full ${whyDetails.score >= 75 ? 'bg-green-100 text-green-800' : 'bg-[#F59E0B]/10 text-[#F59E0B]'}`}>
+                              {whyDetails.score}%
                             </span>
-                          ))}
+                          </div>
+                        </div>
+
+                        <div>
+                          <h3 className="font-serif text-2xl md:text-3xl font-bold text-[#1D4046] mb-3">{pred.title}</h3>
+                          <p className="text-sm md:text-base text-[#1D4046]/80 leading-relaxed">{pred.description}</p>
+                        </div>
+
+                        {/* Summary vs Detailed Toggle sections */}
+                        {predictionsViewMode === "detailed" && (
+                          <div className="space-y-4 pt-6 border-t border-[#1D4046]/5 bg-[#F9F7F1]/30 p-6 rounded-2xl">
+                            <h4 className="text-xs font-extrabold text-[#1D4046] uppercase tracking-wider flex items-center gap-2 select-none">
+                              <Sparkles className="w-3.5 h-3.5 text-[#F59E0B]" /> Why this prediction?
+                            </h4>
+                            <div className="space-y-2 text-xs">
+                              <p className="font-semibold text-[#1D4046]/60">Breakdown & Key Signals:</p>
+                              <ul className="list-disc pl-4 space-y-1 text-[#1D4046]/80 leading-relaxed">
+                                {whyDetails.signals.map((sig, sIdx) => (
+                                  <li key={sIdx}>{sig}</li>
+                                ))}
+                              </ul>
+                              <div className="flex flex-wrap gap-2 pt-2">
+                                {whyDetails.breakdown.map((b, bIdx) => (
+                                  <span key={bIdx} className="bg-white/80 border border-[#1D4046]/10 px-2 py-1 rounded text-[10px] font-bold text-[#1D4046]/60">
+                                    {b}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+
+                            <div className="space-y-2 pt-4 border-t border-[#1D4046]/5 text-[10px]">
+                              <p className="font-semibold text-[#1D4046]/40 uppercase tracking-widest">Calculation Assumptions & Base Model:</p>
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[#1D4046]/60">
+                                {whyDetails.assumptions.map((ass, aIdx) => (
+                                  <div key={aIdx} className="flex items-center gap-1.5">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-[#1D4046]/20" />
+                                    <span>{ass}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {pred.contributors.length > 0 && (
+                          <div className="pt-4 border-t border-[#1D4046]/5">
+                            <div className="text-[10px] font-bold text-[#1D4046]/40 uppercase tracking-wider mb-2 select-none">Astrological Contributors</div>
+                            <div className="flex flex-wrap gap-1.5">
+                              {pred.contributors.map((contrib, cIdx) => (
+                                <span key={cIdx} className="bg-[#1D4046]/5 px-2.5 py-1 text-[10px] font-bold text-[#1D4046]/70 rounded-full select-none">
+                                  {contrib}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Right Column: Mini Supporting Charts displays */}
+                      <div className="lg:col-span-5 bg-[#F9F7F1]/30 p-6 rounded-3xl border border-[#1D4046]/5 space-y-6">
+                        <div className="flex justify-between items-center pb-2 border-b border-[#1D4046]/10 select-none">
+                          <div>
+                            <h4 className="text-xs font-bold text-[#1D4046] uppercase tracking-wider">Supporting Reference Charts</h4>
+                            <p className="text-[10px] text-[#1D4046]/50">Houses {targetHighlightHouses.join(", ")} Highlighted</p>
+                          </div>
+                          <div className="flex bg-white rounded-lg border border-[#1D4046]/10 p-1" role="group" aria-label="Select Prediction Chart Style">
+                            {["North", "South"].map(s => (
+                              <button
+                                key={s}
+                                aria-pressed={chartStyle === s}
+                                onClick={() => setChartStyle(s as ChartStyle)}
+                                className={`px-2.5 py-0.5 text-[10px] rounded transition-all font-semibold ${chartStyle === s ? 'bg-[#F59E0B] text-white shadow-sm' : 'text-[#1D4046]/60 hover:bg-[#F9F7F1]'}`}
+                              >
+                                {s}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                          {/* Natal Supporting Chart */}
+                          <div className="space-y-2 relative">
+                            <div className="text-center text-[10px] font-extrabold text-[#F59E0B] uppercase tracking-widest">
+                              Natal (Rotated)
+                            </div>
+                            <div className="p-2 bg-white rounded-2xl shadow-sm border border-[#1D4046]/5 hover:scale-[1.02] transition-all cursor-pointer relative group">
+                              {predictionNatalChart ? (
+                                <div onClick={() => setExpandedChart({ data: predictionNatalChart, title: `Natal: ${pred.type} Supporting Chart`, highlightedHouses: targetHighlightHouses })}>
+                                  <KundliChart
+                                    data={predictionNatalChart}
+                                    style={chartStyle}
+                                    highlightedHouses={targetHighlightHouses}
+                                  />
+                                  <div className="absolute inset-0 bg-black/5 opacity-0 group-hover:opacity-100 transition-opacity rounded-2xl flex items-center justify-center">
+                                    <span className="text-[10px] bg-white px-2 py-1 rounded shadow text-[#1D4046] font-bold">Maximize Chart</span>
+                                  </div>
+                                </div>
+                              ) : (
+                                <div className="aspect-square w-full bg-[#F9F7F1]/20 rounded-xl flex items-center justify-center text-[10px] text-center p-2 text-[#1D4046]/40 font-bold">
+                                  No Natal Data
+                                </div>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Transit Supporting Chart */}
+                          <div className="space-y-2 relative">
+                            <div className="text-center text-[10px] font-extrabold text-[#1D4046]/60 uppercase tracking-widest">
+                              Transit (Gochara)
+                            </div>
+                            <div className="p-2 bg-white rounded-2xl shadow-sm border border-[#1D4046]/5 hover:scale-[1.02] transition-all cursor-pointer relative group">
+                              {predictionTransitChart ? (
+                                <div onClick={() => setExpandedChart({ data: predictionTransitChart, title: `Transit: ${pred.type} Supporting Chart`, highlightedHouses: targetHighlightHouses })}>
+                                  <KundliChart
+                                    data={predictionTransitChart}
+                                    style={chartStyle}
+                                    highlightedHouses={targetHighlightHouses}
+                                  />
+                                  <div className="absolute inset-0 bg-black/5 opacity-0 group-hover:opacity-100 transition-opacity rounded-2xl flex items-center justify-center">
+                                    <span className="text-[10px] bg-white px-2 py-1 rounded shadow text-[#1D4046] font-bold">Maximize Chart</span>
+                                  </div>
+                                </div>
+                              ) : (
+                                <div className="aspect-square w-full bg-[#F9F7F1]/20 rounded-xl flex items-center justify-center text-[10px] text-center p-2 text-[#1D4046]/40 font-bold">
+                                  Calculating...
+                                </div>
+                              )}
+                            </div>
+                          </div>
                         </div>
                       </div>
-                    )}
-                  </div>
-                ))}
+                    </div>
+                  );
+                })}
               </div>
             </div>
 
@@ -1183,8 +1350,28 @@ export default function Home() {
 
         {activeTab === "charts" && (
             <div className="space-y-8 animate-in fade-in duration-500">
+                {/* Header Banner explaining the page's exact purpose vs Predictions page */}
+                <div className="bg-gradient-to-r from-[#1D4046] to-[#142D31] text-white p-8 md:p-10 rounded-[2.5rem] shadow-xl space-y-4 select-none relative overflow-hidden">
+                  <div className="absolute right-0 top-0 translate-x-12 -translate-y-12 w-64 h-64 rounded-full bg-white/5 blur-3xl" />
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center">
+                      <Info className="w-6 h-6 text-[#F59E0B]" />
+                    </div>
+                    <div>
+                      <h1 className="text-3xl md:text-4xl font-serif tracking-tight text-white font-bold">Deep Jyotish Diagnostics & Tables</h1>
+                      <p className="text-xs font-bold text-white/60 uppercase tracking-[0.2em] mt-1">Analytical Center</p>
+                    </div>
+                  </div>
+                  <p className="text-sm md:text-base text-white/80 max-w-3xl leading-relaxed">
+                    Welcome to the Technical Workspace. Unlike the synthesized, domain-specific forecasts on the <strong>Predictions</strong> page, this view provides raw, un-rotated mathematical data strictly aligned to your <strong>Ascendant (Janma Lagna)</strong>. Use this for deep, classic manual analysis across divisional charts, Ashtakavarga matrices, and calculated Upgrahas.
+                  </p>
+                  <div className="flex items-center gap-2 text-xs text-[#F59E0B] font-bold uppercase tracking-wider pt-4 border-t border-white/10">
+                    <Info className="w-4 h-4" /> All divisional charts (Natal, Transit, D9, D60) on this tab are strictly aligned to the Lagna reference point.
+                  </div>
+                </div>
+
                 <header className="flex flex-col md:flex-row justify-between items-center gap-4 select-none">
-                    <h1 className="text-4xl font-serif text-[#1D4046]">Deep Jyotish View</h1>
+                    <h2 className="text-2xl font-serif text-[#1D4046] font-bold">Diagnostics Workspace</h2>
                     <div className="flex flex-wrap gap-4">
                         <div className="flex bg-white rounded-lg border border-[#1D4046]/10 p-1 shadow-sm" role="group" aria-label="Select Chart Style">
                             {["North", "South"].map(s => <button key={s} aria-pressed={chartStyle === s} onClick={() => setChartStyle(s as ChartStyle)} className={`px-4 py-1 text-xs rounded-md transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F59E0B] ${chartStyle === s ? 'bg-[#F59E0B] text-white font-bold' : 'text-[#1D4046]/60 hover:bg-[#F9F7F1]'}`}>{s} Indian</button>)}
@@ -1334,6 +1521,37 @@ export default function Home() {
             </div>
         )}
       </div>
+
+      {/* Modal for Expanded/Maximized Supporting Charts */}
+      {expandedChart && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm select-none" onClick={() => setExpandedChart(null)}>
+          <div className="bg-white p-6 md:p-8 rounded-[2.5rem] border border-[#1D4046]/10 shadow-2xl max-w-lg w-full space-y-6 relative" onClick={e => e.stopPropagation()}>
+            <div className="flex justify-between items-center border-b border-[#1D4046]/10 pb-4">
+              <div>
+                <h3 className="font-serif text-lg font-bold text-[#1D4046]">{expandedChart.title}</h3>
+                {expandedChart.highlightedHouses && (
+                  <p className="text-[10px] text-[#1D4046]/50 uppercase tracking-wider font-semibold">
+                    Highlighted Houses: {expandedChart.highlightedHouses.join(", ")}
+                  </p>
+                )}
+              </div>
+              <button
+                onClick={() => setExpandedChart(null)}
+                className="text-xs font-bold bg-[#1D4046]/5 text-[#1D4046]/60 hover:bg-[#1D4046]/10 px-3 py-1.5 rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F59E0B]"
+              >
+                Close
+              </button>
+            </div>
+            <div className="p-4 bg-[#F9F7F1]/30 rounded-2xl border border-[#1D4046]/5">
+              <KundliChart
+                data={expandedChart.data}
+                style={chartStyle}
+                highlightedHouses={expandedChart.highlightedHouses}
+              />
+            </div>
+          </div>
+        </div>
+      )}
 
       <nav aria-label="Main Navigation" role="tablist" className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-[#1D4046]/90 backdrop-blur-md px-8 py-4 rounded-full flex gap-12 shadow-2xl items-center z-50 transition-all border border-white/10 select-none">
         {[{id: "dashboard", icon: Sun, label: "Sky"}, {id: "predictions", icon: Sparkles, label: "Predict"}, {id: "charts", icon: Info, label: "Deep"}].map(tab => (
