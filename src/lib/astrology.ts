@@ -387,6 +387,8 @@ const DASHA_PERIODS = [7, 20, 6, 10, 7, 18, 16, 19, 17];
 
 export function calculateVimshottariDasha(birthDate: Date, moonLongitude: number, targetDate: Date = new Date()): DashaInfo {
     const totalCycle = 120, nakshatraLength = 360 / 27;
+    const DAY_MS = 24 * 60 * 60 * 1000;
+    const SAVANA_YEAR_MS = 360 * DAY_MS;
 
     const nakshatraIndex = Math.floor(moonLongitude / nakshatraLength);
     const lordIndex = nakshatraIndex % 9;
@@ -396,17 +398,14 @@ export function calculateVimshottariDasha(birthDate: Date, moonLongitude: number
     const firstDashaRemainingYears = firstDashaTotalYears * (1 - passedInNakshatra);
 
     let currentDate = new Date(birthDate);
-    let dashaEnd = new Date(currentDate);
-    dashaEnd.setFullYear(dashaEnd.getFullYear() + Math.floor(firstDashaRemainingYears));
-    dashaEnd.setMonth(dashaEnd.getMonth() + Math.floor((firstDashaRemainingYears % 1) * 12));
+    let dashaEnd = new Date(currentDate.getTime() + Math.round(firstDashaRemainingYears * SAVANA_YEAR_MS));
 
     let currentLordIndex = lordIndex;
     while (dashaEnd < targetDate) {
         currentDate = new Date(dashaEnd);
         currentLordIndex = (currentLordIndex + 1) % 9;
         const years = DASHA_PERIODS[currentLordIndex];
-        dashaEnd = new Date(currentDate);
-        dashaEnd.setFullYear(dashaEnd.getFullYear() + years);
+        dashaEnd = new Date(currentDate.getTime() + Math.round(years * SAVANA_YEAR_MS));
     }
 
     const currentMahadasha = { lord: DASHA_LORDS[currentLordIndex], start: new Date(currentDate), end: new Date(dashaEnd) };
