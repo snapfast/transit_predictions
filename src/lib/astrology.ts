@@ -388,7 +388,7 @@ const DASHA_PERIODS = [7, 20, 6, 10, 7, 18, 16, 19, 17];
 export function calculateVimshottariDasha(birthDate: Date, moonLongitude: number, targetDate: Date = new Date()): DashaInfo {
     const totalCycle = 120, nakshatraLength = 360 / 27;
     const DAY_MS = 24 * 60 * 60 * 1000;
-    const YEAR_MS = 365.2425 * DAY_MS;
+    const YEAR_MS = 365.25636 * DAY_MS;
 
     const nakshatraIndex = Math.floor(moonLongitude / nakshatraLength);
     const lordIndex = nakshatraIndex % 9;
@@ -397,21 +397,22 @@ export function calculateVimshottariDasha(birthDate: Date, moonLongitude: number
     const firstDashaTotalYears = DASHA_PERIODS[lordIndex];
     const firstDashaRemainingYears = firstDashaTotalYears * (1 - passedInNakshatra);
 
-    let currentDate = new Date(birthDate);
+    const currentDate = new Date(birthDate);
+    let trueMdStart = new Date(currentDate.getTime() - Math.round(firstDashaTotalYears * passedInNakshatra * YEAR_MS));
     let dashaEnd = new Date(currentDate.getTime() + Math.round(firstDashaRemainingYears * YEAR_MS));
 
     let currentLordIndex = lordIndex;
     while (dashaEnd < targetDate) {
-        currentDate = new Date(dashaEnd);
+        trueMdStart = new Date(dashaEnd);
         currentLordIndex = (currentLordIndex + 1) % 9;
         const years = DASHA_PERIODS[currentLordIndex];
-        dashaEnd = new Date(currentDate.getTime() + Math.round(years * YEAR_MS));
+        dashaEnd = new Date(trueMdStart.getTime() + Math.round(years * YEAR_MS));
     }
 
-    const currentMahadasha = { lord: DASHA_LORDS[currentLordIndex], start: new Date(currentDate), end: new Date(dashaEnd) };
+    const currentMahadasha = { lord: DASHA_LORDS[currentLordIndex], start: trueMdStart, end: dashaEnd };
 
-    const mdDurationMs = dashaEnd.getTime() - currentDate.getTime();
-    let adStart = new Date(currentDate);
+    const mdDurationMs = DASHA_PERIODS[currentLordIndex] * YEAR_MS;
+    let adStart = new Date(trueMdStart);
     for (let i = 0; i < 9; i++) {
         const adIdx = (currentLordIndex + i) % 9;
         const adLord = DASHA_LORDS[adIdx];

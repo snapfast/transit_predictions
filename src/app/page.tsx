@@ -1231,9 +1231,12 @@ export default function Home() {
             )}
 
             {/* Combined Dasha Progress Bars */}
-            <h2 className="text-xs font-bold text-[#1D4046]/60 uppercase tracking-[0.3em] flex items-center gap-3 select-none">
-              <div className="h-px w-8 bg-[#1D4046]/20" /> Active Dasha Periods
-            </h2>
+            <div className="flex justify-between items-end mb-4">
+              <h2 className="text-xs font-bold text-[#1D4046]/60 uppercase tracking-[0.3em] flex items-center gap-3 select-none">
+                <div className="h-px w-8 bg-[#1D4046]/20" /> Active Dasha Periods
+              </h2>
+              <span className="text-[10px] text-[#1D4046]/40 uppercase tracking-widest font-sans italic mr-2 select-none" title="Vimshottari lengths calculated using exact Sidereal Year (365.25636 days) to align with standard classical/JHora expectations.">Sidereal Year</span>
+            </div>
             {dasha && (
                 <section className="bg-white p-8 rounded-[2rem] border border-[#1D4046]/10 shadow-sm space-y-8 select-none">
                     {(() => {
