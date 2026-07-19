@@ -45,7 +45,7 @@ test('calculateVimshottariDasha', () => {
     const mdDurationDays = (result.mahadasha.end.getTime() - result.mahadasha.start.getTime()) / (24 * 60 * 60 * 1000);
     // Dasha periods: Ketu 7, Venus 20, Sun 6, Moon 10, Mars 7, Rahu 18, Jupiter 16, Saturn 19, Mercury 17.
     // Total cycle is 120 years.
-    // For any mahadasha, its duration in days should be exactly its period in years * 365.25636.
+    // For any mahadasha, its duration in days should be exactly its period in years * 365.24219.
     const expectedYears = result.mahadasha.lord === "Ketu" ? 7 :
                           result.mahadasha.lord === "Venus" ? 20 :
                           result.mahadasha.lord === "Sun" ? 6 :
@@ -55,7 +55,7 @@ test('calculateVimshottariDasha', () => {
                           result.mahadasha.lord === "Jupiter" ? 16 :
                           result.mahadasha.lord === "Saturn" ? 19 : 17;
 
-    assert.strictEqual(Math.round(mdDurationDays), Math.round(expectedYears * 365.25636));
+    assert.strictEqual(Math.round(mdDurationDays), Math.round(expectedYears * 365.24219));
 
     console.log(`Current Mahadasha for 1990 birth in Ashwini (as of 2024): ${result.mahadasha.lord}`);
     console.log(`Current Antardasha: ${result.antardasha.lord}`);

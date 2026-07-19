@@ -388,7 +388,8 @@ const DASHA_PERIODS = [7, 20, 6, 10, 7, 18, 16, 19, 17];
 export function calculateVimshottariDasha(birthDate: Date, moonLongitude: number, targetDate: Date = new Date()): DashaInfo {
     const totalCycle = 120, nakshatraLength = 360 / 27;
     const DAY_MS = 24 * 60 * 60 * 1000;
-    const YEAR_MS = 365.25636 * DAY_MS;
+    const TROPICAL_YEAR_DAYS = 365.24219;
+    const YEAR_MS = TROPICAL_YEAR_DAYS * DAY_MS;
 
     const nakshatraIndex = Math.floor(moonLongitude / nakshatraLength);
     const lordIndex = nakshatraIndex % 9;
