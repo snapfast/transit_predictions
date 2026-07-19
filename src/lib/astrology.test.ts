@@ -26,14 +26,38 @@ test('calculateSadeSati', () => {
 
 test('calculateVimshottariDasha', () => {
     const birthDate = new Date('1990-01-01T12:00:00Z');
-    // Ashwini nakshatra starts at 0 longitude. Lord is Ketu.
-    const result = calculateVimshottariDasha(birthDate, 1);
+    // Ashwini nakshatra starts at 0 longitude. Lord is Ketu (7 years period).
+    // Let's test with a moon longitude of 1.
+    // Nakshatra length is 13.333333 degrees.
+    // 1 degree is 1 / 13.333333 = 0.075 of Ashwini nakshatra passed.
+    // remaining is 0.925 of Ketu dasha = 0.925 * 7 * 360 = 2331 days.
+    // Birth date: 1990-01-01.
+    // Let's calculate for target date being exactly now, or let's test a specific target date to assert values.
+    const targetDate = new Date('2024-03-07T12:00:00Z');
+    const result = calculateVimshottariDasha(birthDate, 1, targetDate);
 
     assert.ok(result.mahadasha);
     assert.ok(result.antardasha);
     assert.ok(result.pratyantardasha);
     assert.ok(result.sookshmadasha);
-    console.log(`Current Mahadasha for 1990 birth in Ashwini: ${result.mahadasha.lord}`);
+
+    // With 360-day year, let's verify that the total duration of each level is correct.
+    const mdDurationDays = (result.mahadasha.end.getTime() - result.mahadasha.start.getTime()) / (24 * 60 * 60 * 1000);
+    // Dasha periods: Ketu 7, Venus 20, Sun 6, Moon 10, Mars 7, Rahu 18, Jupiter 16, Saturn 19, Mercury 17.
+    // Total cycle is 120 years.
+    // For any mahadasha, its duration in days should be exactly its period in years * 360.
+    const expectedYears = result.mahadasha.lord === "Ketu" ? 7 :
+                          result.mahadasha.lord === "Venus" ? 20 :
+                          result.mahadasha.lord === "Sun" ? 6 :
+                          result.mahadasha.lord === "Moon" ? 10 :
+                          result.mahadasha.lord === "Mars" ? 7 :
+                          result.mahadasha.lord === "Rahu" ? 18 :
+                          result.mahadasha.lord === "Jupiter" ? 16 :
+                          result.mahadasha.lord === "Saturn" ? 19 : 17;
+
+    assert.strictEqual(Math.round(mdDurationDays), expectedYears * 360);
+
+    console.log(`Current Mahadasha for 1990 birth in Ashwini (as of 2024): ${result.mahadasha.lord}`);
     console.log(`Current Antardasha: ${result.antardasha.lord}`);
     console.log(`Current Pratyantardasha: ${result.pratyantardasha.lord}`);
     console.log(`Current Sookshmadasha: ${result.sookshmadasha.lord}`);
