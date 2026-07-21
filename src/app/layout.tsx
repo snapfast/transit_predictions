@@ -25,7 +25,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${inter.variable} ${cinzel.variable} font-sans antialiased bg-[#F9F7F1] text-[#1D4046]`}
+        className={`${inter.variable} ${cinzel.variable} font-sans antialiased bg-[#FDF8ED] text-[#2D3A3A]`}
       >
         {children}
       </body>

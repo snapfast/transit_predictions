@@ -1184,3 +1184,118 @@ function checkVedha(p: PlanetData, all: PlanetData[]): { isObstructed: boolean, 
     }
     return { isObstructed: false };
 }
+
+export interface SoulPurpose {
+    atmakaraka: string;
+    amatyakaraka: string;
+    dharmaHouse: {
+        sign: string;
+        lord: string;
+        occupants: string[];
+        theme: string;
+    };
+    sunPlacement: {
+        house: number;
+        sign: string;
+        theme: string;
+    };
+    moonPlacement: {
+        house: number;
+        sign: string;
+        theme: string;
+    };
+    karmicPath: string;
+    zenGuidance: string;
+}
+
+export function generateSoulPurpose(natalPlanets: PlanetData[]): SoulPurpose {
+    // 1. Calculate Jaimini Karakas (Atmakaraka & Amatyakaraka)
+    // Exclude Rahu, Ketu, Uranus, Neptune, Pluto, Upgrahas
+    const validKarakas = ["Sun", "Moon", "Mars", "Mercury", "Jupiter", "Venus", "Saturn"];
+
+    // Sort by degree in sign (longitude % 30) descending
+    const karakaCandidates = natalPlanets
+        .filter(p => validKarakas.includes(p.name))
+        .map(p => ({ name: p.name, deg: p.longitude % 30 }))
+        .sort((a, b) => b.deg - a.deg);
+
+    const atmakaraka = karakaCandidates.length > 0 ? karakaCandidates[0].name : "Unknown";
+    const amatyakaraka = karakaCandidates.length > 1 ? karakaCandidates[1].name : "Unknown";
+
+    // 2. Identify 9th House of Dharma
+    const ascendant = natalPlanets.find(p => p.name === "Ascendant");
+    const ascRasiIdx = ascendant ? RASI_INDEX_MAP[ascendant.rasi] ?? RASIS.indexOf(ascendant.rasi) : 0;
+
+    const ninthHouseRasiIdx = (ascRasiIdx + 8) % 12;
+    const ninthHouseSign = RASIS[ninthHouseRasiIdx];
+    const planetLords: Record<string, string> = { "Aries": "Mars", "Taurus": "Venus", "Gemini": "Mercury", "Cancer": "Moon", "Leo": "Sun", "Virgo": "Mercury", "Libra": "Venus", "Scorpio": "Mars", "Sagittarius": "Jupiter", "Capricorn": "Saturn", "Aquarius": "Saturn", "Pisces": "Jupiter" };
+    const ninthHouseLord = planetLords[ninthHouseSign] || "Unknown";
+
+    // Find occupants of the 9th house
+    const occupants = natalPlanets
+        .filter(p => p.name !== "Ascendant" && p.rasi === ninthHouseSign)
+        .map(p => p.name);
+
+    // 3. Evaluate Sun (Soul) and Moon (Mind) from Ascendant
+    const sun = natalPlanets.find(p => p.name === "Sun");
+    const moon = natalPlanets.find(p => p.name === "Moon");
+
+    const getHouse = (planet: PlanetData | undefined) => {
+        if (!planet) return 1;
+        const pIdx = RASI_INDEX_MAP[planet.rasi] ?? RASIS.indexOf(planet.rasi);
+        return (pIdx - ascRasiIdx + 12) % 12 + 1;
+    };
+
+    const sunHouse = getHouse(sun);
+    const moonHouse = getHouse(moon);
+
+    const sunTheme = HOUSE_THEMES[sunHouse] || "General influences.";
+    const moonTheme = HOUSE_THEMES[moonHouse] || "General influences.";
+
+    // 4. Synthesize Karmic Path & Zen Guidance
+    let karmicPath = `Your soul's deeper journey is strongly guided by ${atmakaraka}, acting as your Atmakaraka (Soul Planet). `;
+    karmicPath += `With your 9th House of Dharma residing in ${ninthHouseSign}, ruled by ${ninthHouseLord}, your highest purpose involves cultivating the themes of this sign. `;
+    if (occupants.length > 0) {
+        karmicPath += `The presence of ${occupants.join(", ")} in this house directly shapes how you pursue wisdom and truth. `;
+    } else {
+        karmicPath += `Because this space is unoccupied, you are encouraged to look internally and draw upon the strength of ${ninthHouseLord} to find your life's meaning. `;
+    }
+
+    karmicPath += `Your Sun in the ${sunHouse}th house illuminates your core drive towards ${sunTheme.toLowerCase().replace('.', '')}, while your Moon in the ${moonHouse}th house anchors your emotional comfort in ${moonTheme.toLowerCase().replace('.', '')}.`;
+
+    // Generate Meditative Zen Guidance based on the Atmakaraka
+    const zenGuidanceMap: Record<string, string> = {
+        "Sun": "Embrace quiet confidence. Your light is innate and does not need to be forced. Practice daily gratitude for simply 'being'. Focus meditation on the heart center.",
+        "Moon": "Flow like water. Allow your emotions to arise and pass like passing clouds in an open sky. Practice mindfulness of the breath and nurturing self-compassion.",
+        "Mars": "Channel your fiery energy into disciplined, purposeful action. Cultivate patience and recognize that true strength lies in peaceful restraint. Engage in dynamic, moving meditations like walking or Tai Chi.",
+        "Mercury": "Quiet the restless mind. Your intellect is sharp, but wisdom is found in the spaces between thoughts. Practice silent meditation and observing your thoughts without attachment.",
+        "Jupiter": "Expand your inner horizons gently. True wisdom comes not just from seeking knowledge, but from internalizing it. Practice meditative reading (Lectio Divina) and reflecting on universal interconnectedness.",
+        "Venus": "Find harmony and beauty in the present moment. Cultivate loving-kindness (Metta) towards yourself and others. Meditate on the beauty of nature and art.",
+        "Saturn": "Embrace structure and time. Your path involves deep, enduring commitment. Find peace in simplicity and minimalism. Practice grounding meditations, focusing on the connection to the earth."
+    };
+
+    const zenGuidance = zenGuidanceMap[atmakaraka] || "Breathe deeply. Trust the unfolding of your unique path and remain anchored in the present moment.";
+
+    return {
+        atmakaraka,
+        amatyakaraka,
+        dharmaHouse: {
+            sign: ninthHouseSign,
+            lord: ninthHouseLord,
+            occupants,
+            theme: "Wisdom, higher learning, and spiritual truth."
+        },
+        sunPlacement: {
+            house: sunHouse,
+            sign: sun?.rasi || "",
+            theme: sunTheme
+        },
+        moonPlacement: {
+            house: moonHouse,
+            sign: moon?.rasi || "",
+            theme: moonTheme
+        },
+        karmicPath,
+        zenGuidance
+    };
+}
