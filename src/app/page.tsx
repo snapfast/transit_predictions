@@ -1387,6 +1387,11 @@ export default function Home() {
                       <p className="text-sm text-[#2D3A3A]/80">The planet with the highest degree in your chart, representing your core soul lesson in this lifetime.</p>
                   </div>
                   <div className="bg-white p-6 rounded-3xl shadow-sm border border-[#2D3A3A]/5 hover:shadow-md transition-all">
+                      <div className="text-[10px] font-bold text-[#2D3A3A]/40 uppercase tracking-widest mb-1">Amatyakaraka (Minister Planet)</div>
+                      <div className="text-2xl font-serif text-[#D97757] font-bold mb-2">{soulPurpose.amatyakaraka}</div>
+                      <p className="text-sm text-[#2D3A3A]/80">The planet with the second highest degree, guiding your career, purpose, and path in this lifetime.</p>
+                  </div>
+                  <div className="bg-white p-6 rounded-3xl shadow-sm border border-[#2D3A3A]/5 hover:shadow-md transition-all">
                       <div className="text-[10px] font-bold text-[#2D3A3A]/40 uppercase tracking-widest mb-1">9th House of Dharma</div>
                       <div className="text-xl font-serif text-[#D97757] font-bold mb-2">{soulPurpose.dharmaHouse.sign} (ruled by {soulPurpose.dharmaHouse.lord})</div>
                       <p className="text-sm text-[#2D3A3A]/80">Your path to higher meaning. Themes: {soulPurpose.dharmaHouse.theme.toLowerCase()}</p>
@@ -1502,43 +1507,81 @@ export default function Home() {
                         </div>
                     ))}
                 </div>
-                <section className="bg-white p-8 rounded-3xl border border-[#2D3A3A]/10 shadow-sm">
-                    <h2 className="text-2xl font-serif mb-8 text-[#2D3A3A] select-none">Detailed Planetary Positions (Transit)</h2>
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-left text-sm">
-                            <thead className="border-b border-[#2D3A3A]/10">
-                                <tr className="text-[#2D3A3A]/40 font-bold text-xs uppercase">
-                                    <th className="pb-4">Planet</th>
-                                    <th className="pb-4">Degree</th>
-                                    <th className="pb-4">Rasi</th>
-                                    <th className="pb-4">Nakshatra</th>
-                                    <th className="pb-4">Pada</th>
-                                    <th className="pb-4">Kakshya</th>
-                                    <th className="pb-4">Status</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-[#2D3A3A]/5">
-                                {planets.map((p) => (
-                                    <tr key={p.name} className="group hover:bg-[#FDF8ED]/50">
-                                        <td className="py-4 font-bold text-[#2D3A3A]">{p.name}</td>
-                                        <td className="py-4">{p.degree}</td>
-                                        <td className="py-4">{p.rasi}</td>
-                                        <td className="py-4">{p.nakshatra}</td>
-                                        <td className="py-4 text-center">{p.pada}</td>
-                                        <td className="py-4">{p.kakshya || "-"}</td>
-                                        <td className="py-4">
-                                            <div className="flex flex-wrap gap-1">
-                                                {p.isRetrograde && <span className="px-2 py-0.5 bg-orange-50 text-orange-600 text-[10px] font-bold rounded">RET</span>}
-                                                {p.isCombust && <span className="px-2 py-0.5 bg-red-50 text-red-600 text-[10px] font-bold rounded">COM</span>}
-                                                {p.vedha?.isObstructed && <span className="px-2 py-0.5 bg-gray-50 text-gray-600 text-[10px] font-bold rounded">VED</span>}
-                                            </div>
-                                        </td>
+
+                <div className="grid lg:grid-cols-2 gap-8">
+                    <section className="bg-white p-8 rounded-3xl border border-[#2D3A3A]/10 shadow-sm">
+                        <h2 className="text-2xl font-serif mb-8 text-[#2D3A3A] select-none">Detailed Planetary Positions (Natal)</h2>
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-left text-sm">
+                                <thead className="border-b border-[#2D3A3A]/10">
+                                    <tr className="text-[#2D3A3A]/40 font-bold text-xs uppercase">
+                                        <th className="pb-4">Planet</th>
+                                        <th className="pb-4">Degree</th>
+                                        <th className="pb-4">Rasi</th>
+                                        <th className="pb-4">Nakshatra</th>
+                                        <th className="pb-4">Pada</th>
+                                        <th className="pb-4">Status</th>
                                     </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                </section>
+                                </thead>
+                                <tbody className="divide-y divide-[#2D3A3A]/5">
+                                    {natalPlanets.map((p) => (
+                                        <tr key={p.name} className="group hover:bg-[#FDF8ED]/50">
+                                            <td className="py-4 font-bold text-[#2D3A3A]">{p.name}</td>
+                                            <td className="py-4">{p.degree}</td>
+                                            <td className="py-4">{p.rasi}</td>
+                                            <td className="py-4">{p.nakshatra}</td>
+                                            <td className="py-4 text-center">{p.pada}</td>
+                                            <td className="py-4">
+                                                <div className="flex flex-wrap gap-1">
+                                                    {p.isRetrograde && <span className="px-2 py-0.5 bg-orange-50 text-orange-600 text-[10px] font-bold rounded">RET</span>}
+                                                    {p.isCombust && <span className="px-2 py-0.5 bg-red-50 text-red-600 text-[10px] font-bold rounded">COM</span>}
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </section>
+
+                    <section className="bg-white p-8 rounded-3xl border border-[#2D3A3A]/10 shadow-sm">
+                        <h2 className="text-2xl font-serif mb-8 text-[#2D3A3A] select-none">Detailed Planetary Positions (Transit)</h2>
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-left text-sm">
+                                <thead className="border-b border-[#2D3A3A]/10">
+                                    <tr className="text-[#2D3A3A]/40 font-bold text-xs uppercase">
+                                        <th className="pb-4">Planet</th>
+                                        <th className="pb-4">Degree</th>
+                                        <th className="pb-4">Rasi</th>
+                                        <th className="pb-4">Nakshatra</th>
+                                        <th className="pb-4">Pada</th>
+                                        <th className="pb-4">Kakshya</th>
+                                        <th className="pb-4">Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-[#2D3A3A]/5">
+                                    {planets.map((p) => (
+                                        <tr key={p.name} className="group hover:bg-[#FDF8ED]/50">
+                                            <td className="py-4 font-bold text-[#2D3A3A]">{p.name}</td>
+                                            <td className="py-4">{p.degree}</td>
+                                            <td className="py-4">{p.rasi}</td>
+                                            <td className="py-4">{p.nakshatra}</td>
+                                            <td className="py-4 text-center">{p.pada}</td>
+                                            <td className="py-4">{p.kakshya || "-"}</td>
+                                            <td className="py-4">
+                                                <div className="flex flex-wrap gap-1">
+                                                    {p.isRetrograde && <span className="px-2 py-0.5 bg-orange-50 text-orange-600 text-[10px] font-bold rounded">RET</span>}
+                                                    {p.isCombust && <span className="px-2 py-0.5 bg-red-50 text-red-600 text-[10px] font-bold rounded">COM</span>}
+                                                    {p.vedha?.isObstructed && <span className="px-2 py-0.5 bg-gray-50 text-gray-600 text-[10px] font-bold rounded">VED</span>}
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </section>
+                </div>
 
                 {upgrahas.length > 0 && (
                     <section className="bg-white p-8 rounded-3xl border border-[#2D3A3A]/10 shadow-sm">
