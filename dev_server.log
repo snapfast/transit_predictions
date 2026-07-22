@@ -5,10 +5,145 @@
 ▲ Next.js 16.2.9 (Turbopack)
 - Local:         http://localhost:3000
 - Network:       http://192.168.0.2:3000
-✓ Ready in 566ms
+✓ Ready in 608ms
 
- HEAD / 200 in 3.6s (next.js: 3.3s, application-code: 332ms)
- GET / 200 in 132ms (next.js: 11ms, application-code: 121ms)
- GET / 200 in 118ms (next.js: 4ms, application-code: 114ms)
- GET / 200 in 76ms (next.js: 4ms, application-code: 72ms)
- GET / 200 in 70ms (next.js: 4ms, application-code: 66ms)
+○ Compiling / ...
+ GET / 200 in 4.4s (next.js: 3.7s, application-code: 684ms)
+ GET / 200 in 95ms (next.js: 6ms, application-code: 89ms)
+ GET / 200 in 88ms (next.js: 4ms, application-code: 84ms)
+[browser] A tree hydrated but some attributes of the server rendered HTML didn't match the client properties. This won't be patched up. This can happen if a SSR-ed Client Component used:
+
+- A server/client branch `if (typeof window !== 'undefined')`.
+- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.
+- Date formatting in a user's locale which doesn't match the server.
+- External changing data without sending a snapshot of it along with the HTML.
+- Invalid HTML tag nesting.
+
+It can also happen if the client has a browser extension installed which messes with the HTML before React loaded.
+
+https://react.dev/link/hydration-mismatch
+
+  ...
+    <HTTPAccessFallbackBoundary notFound={{...}} forbidden={undefined} unauthorized={undefined}>
+      <HTTPAccessFallbackErrorBoundary pathname="/" notFound={{...}} forbidden={undefined} unauthorized={undefined} ...>
+        <RedirectBoundary>
+          <RedirectErrorBoundary router={{...}}>
+            <InnerLayoutRouter url="/" tree={[...]} params={{}} cacheNode={{rsc:{...}, ...}} segmentPath={[...]} ...>
+              <SegmentViewNode type="page" pagePath="src/page.tsx">
+                <SegmentTrieNode>
+                <ClientPageRoot Component={function Home} serverProvidedParams={{...}}>
+                  <Home params={Promise} searchParams={Promise}>
+                    <main className="min-h-scre...">
+                      <div className="flex-1 max...">
+                        ...
+                          <div className="flex flex-...">
+                            <div className="flex-1 spa...">
+                              <h3>
+                              <div className="grid grid-...">
+                                <div className="space-y-2 ...">
+                                  <label>
+                                  <div className="relative">
+                                    <input
+                                      id="birthCity"
+                                      role="combobox"
+                                      aria-expanded={false}
+                                      aria-haspopup="listbox"
+                                      aria-autocomplete="list"
+                                      aria-controls="birth-suggestions-listbox"
+                                      aria-activedescendant={undefined}
+                                      aria-busy={false}
+                                      value="New Delhi, Delhi, India"
+                                      onChange={function onChange}
+                                      onKeyDown={function handleKeyDown}
+                                      onFocus={function onFocus}
+                                      className="w-full p-3 bg-[#FDF8ED] border border-[#2D3A3A]/10 rounded-xl outline..."
+                                      placeholder="Search birth city..."
+-                                     style={{caret-color:"transparent"}}
+                                    >
+                                <div className="space-y-2">
+                                  <label>
+                                  <input
+                                    id="birthDate"
+                                    type="date"
+                                    value=""
+                                    onChange={function onChange}
+                                    className="w-full p-3 bg-[#FDF8ED] border border-[#2D3A3A]/10 rounded-xl outline-n..."
+-                                   style={{caret-color:"transparent"}}
+                                  >
+                                <div className="space-y-2">
+                                  <label>
+                                  <input
+                                    id="birthTime"
+                                    type="time"
+                                    value=""
+                                    onChange={function onChange}
+                                    className="w-full p-3 bg-[#FDF8ED] border border-[#2D3A3A]/10 rounded-xl outline-n..."
+-                                   style={{caret-color:"transparent"}}
+                                  >
+                            <div className="flex-1 spa...">
+                              <h3>
+                              <div className="grid grid-...">
+                                <div className="space-y-2 ...">
+                                  <label>
+                                  <div className="relative">
+                                    <input
+                                      id="transitCity"
+                                      role="combobox"
+                                      aria-expanded={false}
+                                      aria-haspopup="listbox"
+                                      aria-autocomplete="list"
+                                      aria-controls="transit-suggestions-listbox"
+                                      aria-activedescendant={undefined}
+                                      aria-busy={false}
+                                      value="New Delhi, Delhi, India"
+                                      onChange={function onChange}
+                                      onKeyDown={function handleKeyDown}
+                                      onFocus={function onFocus}
+                                      className="w-full p-3 bg-[#FDF8ED] border border-[#2D3A3A]/10 rounded-xl outline..."
+                                      placeholder="Search transit city..."
+-                                     style={{caret-color:"transparent"}}
+                                    >
+                                <div className="space-y-2">
+                                  <label>
+                                  <input
+                                    id="transitDate"
+                                    type="date"
+                                    value=""
+                                    onChange={function onChange}
+                                    className="w-full p-3 bg-[#FDF8ED] border border-[#2D3A3A]/10 rounded-xl outline-n..."
+-                                   style={{caret-color:"transparent"}}
+                                  >
+                                <div className="space-y-2">
+                                  <label>
+                                  <input
+                                    id="transitTime"
+                                    type="time"
+                                    value=""
+                                    onChange={function onChange}
+                                    className="w-full p-3 bg-[#FDF8ED] border border-[#2D3A3A]/10 rounded-xl outline-n..."
+-                                   style={{caret-color:"transparent"}}
+                                  >
+                        <div className="space-y-8 ...">
+                          <header>
+                          <section>
+                          <section className="bg-white p...">
+                            <div>
+                            <div>
+                            <div className="space-y-1">
+                              <input
+                                type="range"
+                                min="-30"
+                                max="30"
+                                value={0}
+                                onChange={function onChange}
+                                aria-label="Transit Timeline Scrubber"
+                                aria-valuetext="Current Date"
+                                className="w-full h-1.5 bg-[#FDF8ED] rounded-lg appearance-none cursor-pointer accent-..."
+-                               style={{caret-color:"transparent"}}
+                              >
+                              ...
+                      ...
+              ...
+            ...
+
+ GET / 200 in 118ms (next.js: 7ms, application-code: 112ms)
