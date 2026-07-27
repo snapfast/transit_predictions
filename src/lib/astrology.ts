@@ -123,6 +123,8 @@ export function calculateUpgrahas(
             nakshatra: NAKSHATRAS[Math.floor(item.longitude / (360 / 27))],
             pada,
             isRetrograde: false,
+            dignity: "-",
+            nakshatraLord: DASHA_LORDS[(Math.floor(item.longitude / (360 / 27)) % 9)],
             isCombust: false,
             kakshya: KAKSHYA_LORDS[kakshyaIdx]
         });
@@ -171,6 +173,8 @@ export function calculateUpgrahas(
             nakshatra: NAKSHATRAS[Math.floor(longitude / (360 / 27))],
             pada,
             isRetrograde: false,
+            dignity: "-",
+            nakshatraLord: DASHA_LORDS[(Math.floor(longitude / (360 / 27)) % 9)],
             isCombust: false,
             kakshya: KAKSHYA_LORDS[kakshyaIdx]
         });
@@ -190,6 +194,8 @@ export interface PlanetData {
     pada: number;
     isRetrograde: boolean;
     isCombust?: boolean;
+    dignity?: string;
+    nakshatraLord?: string;
     kakshya?: string;
     vedha?: {
         isObstructed: boolean;
@@ -771,6 +777,21 @@ export function getMeanRahu(time: AstModule.AstroTime): number {
     return n;
 }
 
+
+const EXALTATION: Record<string, string> = { "Sun": "Aries", "Moon": "Taurus", "Mars": "Capricorn", "Mercury": "Virgo", "Jupiter": "Cancer", "Venus": "Pisces", "Saturn": "Libra", "Rahu": "Taurus", "Ketu": "Scorpio" };
+const DEBILITATION: Record<string, string> = { "Sun": "Libra", "Moon": "Scorpio", "Mars": "Cancer", "Mercury": "Pisces", "Jupiter": "Capricorn", "Venus": "Virgo", "Saturn": "Aries", "Rahu": "Scorpio", "Ketu": "Taurus" };
+const MOOLATRIKONA: Record<string, string> = { "Sun": "Leo", "Moon": "Taurus", "Mars": "Aries", "Mercury": "Virgo", "Jupiter": "Sagittarius", "Venus": "Libra", "Saturn": "Aquarius" };
+
+function getDignity(planetName: string, rasi: string): string {
+    if (EXALTATION[planetName] === rasi) return "Exalted";
+    if (DEBILITATION[planetName] === rasi) return "Debilitated";
+    if (MOOLATRIKONA[planetName] === rasi) return "Moolatrikona";
+
+    const planetLords: Record<string, string> = { "Aries": "Mars", "Taurus": "Venus", "Gemini": "Mercury", "Cancer": "Moon", "Leo": "Sun", "Virgo": "Mercury", "Libra": "Venus", "Scorpio": "Mars", "Sagittarius": "Jupiter", "Capricorn": "Saturn", "Aquarius": "Saturn", "Pisces": "Jupiter" };
+    if (planetLords[rasi] === planetName) return "Own Sign";
+    return "Neutral";
+}
+
 const KAKSHYA_LORDS = ["Saturn", "Jupiter", "Mars", "Sun", "Venus", "Mercury", "Moon", "Lagna"];
 
 const formatDegree = (deg: number) => `${Math.floor(deg)}° ${Math.floor((deg % 1) * 60)}'`;
@@ -884,12 +905,22 @@ export function calculateTransits(date: Date, lat: number = 28.6139, lon: number
         nakshatra: NAKSHATRAS[Math.floor(lagnaSid / (360 / 27))],
         pada: Math.floor((lagnaSid % (360/27)) / ((360/27) / 4)) + 1,
         isRetrograde: false,
-        kakshya: KAKSHYA_LORDS[Math.floor(lagnaRasiDeg / 3.75)]
+        kakshya: KAKSHYA_LORDS[Math.floor(lagnaRasiDeg / 3.75)],
+        dignity: "-",
+        nakshatraLord: DASHA_LORDS[(Math.floor(lagnaSid / (360 / 27)) % 9)]
     }];
     // Bolt Optimization: Replace `.forEach` with standard `for` loop
     for (let i = 0; i < raw.length; i++) {
         const p = raw[i];
-        planets.push({ ...p, rasi: RASIS[p.rasiIdx], house: (p.rasiIdx - refRasi + 12) % 12 + 1, nakshatra: NAKSHATRAS[Math.floor(p.longitude / (360 / 27))] });
+        const nakshatraIdx = Math.floor(p.longitude / (360 / 27));
+        planets.push({
+            ...p,
+            rasi: RASIS[p.rasiIdx],
+            house: (p.rasiIdx - refRasi + 12) % 12 + 1,
+            nakshatra: NAKSHATRAS[nakshatraIdx],
+            nakshatraLord: DASHA_LORDS[(nakshatraIdx % 9)],
+            dignity: getDignity(p.name, RASIS[p.rasiIdx])
+        });
     }
 
     const d1: DivisionalChartData = { houses: {}, houseRasis: {} }, d9: DivisionalChartData = { houses: {}, houseRasis: {} }, d60: DivisionalChartData = { houses: {}, houseRasis: {} };
@@ -1188,6 +1219,11 @@ function checkVedha(p: PlanetData, all: PlanetData[]): { isObstructed: boolean, 
 export interface SoulPurpose {
     atmakaraka: string;
     amatyakaraka: string;
+    bhratrikaraka: string;
+    matrikaraka: string;
+    putrakaraka: string;
+    gnatikaraka: string;
+    darakaraka: string;
     dharmaHouse: {
         sign: string;
         lord: string;
@@ -1221,6 +1257,11 @@ export function generateSoulPurpose(natalPlanets: PlanetData[]): SoulPurpose {
 
     const atmakaraka = karakaCandidates.length > 0 ? karakaCandidates[0].name : "Unknown";
     const amatyakaraka = karakaCandidates.length > 1 ? karakaCandidates[1].name : "Unknown";
+    const bhratrikaraka = karakaCandidates.length > 2 ? karakaCandidates[2].name : "Unknown";
+    const matrikaraka = karakaCandidates.length > 3 ? karakaCandidates[3].name : "Unknown";
+    const putrakaraka = karakaCandidates.length > 4 ? karakaCandidates[4].name : "Unknown";
+    const gnatikaraka = karakaCandidates.length > 5 ? karakaCandidates[5].name : "Unknown";
+    const darakaraka = karakaCandidates.length > 6 ? karakaCandidates[6].name : "Unknown";
 
     // 2. Identify 9th House of Dharma
     const ascendant = natalPlanets.find(p => p.name === "Ascendant");
@@ -1279,6 +1320,11 @@ export function generateSoulPurpose(natalPlanets: PlanetData[]): SoulPurpose {
     return {
         atmakaraka,
         amatyakaraka,
+        bhratrikaraka,
+        matrikaraka,
+        putrakaraka,
+        gnatikaraka,
+        darakaraka,
         dharmaHouse: {
             sign: ninthHouseSign,
             lord: ninthHouseLord,

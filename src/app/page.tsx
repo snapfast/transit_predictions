@@ -31,6 +31,18 @@ const getDurationString = (start: Date, end: Date) => {
   return parts.join(", ");
 };
 
+
+function JargonTooltip({ text, definition }: { text: string, definition: string }) {
+    return (
+        <span className="group relative inline-block cursor-help border-b border-dotted border-[#2D3A3A]/40 hover:border-[#D97757] transition-colors">
+            {text}
+            <span className="invisible opacity-0 group-hover:visible group-hover:opacity-100 transition-all duration-200 absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 p-2 bg-[#2D3A3A] text-white text-[10px] font-medium leading-tight rounded-lg shadow-xl z-50 text-center pointer-events-none after:content-[''] after:absolute after:top-full after:left-1/2 after:-translate-x-1/2 after:border-4 after:border-transparent after:border-t-[#2D3A3A]">
+                {definition}
+            </span>
+        </span>
+    );
+}
+
 export default function Home() {
   // Birth Profile State
   const [birthDateStr, setBirthDateStr] = useState<string>("");
@@ -1381,15 +1393,17 @@ export default function Home() {
                 <div className="h-px w-8 bg-[#D97757]/40" /> Soul Mechanics
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="bg-white p-6 rounded-3xl shadow-sm border border-[#2D3A3A]/5 hover:shadow-md transition-all">
-                      <div className="text-[10px] font-bold text-[#2D3A3A]/40 uppercase tracking-widest mb-1">Atmakaraka (Soul Planet)</div>
-                      <div className="text-2xl font-serif text-[#D97757] font-bold mb-2">{soulPurpose.atmakaraka}</div>
-                      <p className="text-sm text-[#2D3A3A]/80">The planet with the highest degree in your chart, representing your core soul lesson in this lifetime.</p>
-                  </div>
-                  <div className="bg-white p-6 rounded-3xl shadow-sm border border-[#2D3A3A]/5 hover:shadow-md transition-all">
-                      <div className="text-[10px] font-bold text-[#2D3A3A]/40 uppercase tracking-widest mb-1">Amatyakaraka (Minister Planet)</div>
-                      <div className="text-2xl font-serif text-[#D97757] font-bold mb-2">{soulPurpose.amatyakaraka}</div>
-                      <p className="text-sm text-[#2D3A3A]/80">The planet with the second highest degree, guiding your career, purpose, and path in this lifetime.</p>
+                  <div className="col-span-1 md:col-span-2 bg-white p-6 rounded-3xl shadow-sm border border-[#2D3A3A]/5">
+                      <div className="text-[10px] font-bold text-[#2D3A3A]/40 uppercase tracking-widest mb-4">Jaimini Chara Karakas (Soul Drivers)</div>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+                          <div className="p-3 bg-[#FDF8ED] rounded-xl border border-[#2D3A3A]/5"><div className="text-[10px] font-bold text-[#2D3A3A]/50 uppercase mb-1">Atmakaraka (Soul)</div><div className="text-lg font-serif font-bold text-[#D97757]">{soulPurpose.atmakaraka}</div></div>
+                          <div className="p-3 bg-[#FDF8ED] rounded-xl border border-[#2D3A3A]/5"><div className="text-[10px] font-bold text-[#2D3A3A]/50 uppercase mb-1">Amatyakaraka (Career)</div><div className="text-lg font-serif font-bold text-[#D97757]">{soulPurpose.amatyakaraka}</div></div>
+                          <div className="p-3 bg-[#FDF8ED] rounded-xl border border-[#2D3A3A]/5"><div className="text-[10px] font-bold text-[#2D3A3A]/50 uppercase mb-1">Bhratrikaraka (Siblings/Guru)</div><div className="text-lg font-serif font-bold text-[#2D3A3A]">{soulPurpose.bhratrikaraka}</div></div>
+                          <div className="p-3 bg-[#FDF8ED] rounded-xl border border-[#2D3A3A]/5"><div className="text-[10px] font-bold text-[#2D3A3A]/50 uppercase mb-1">Matrikaraka (Mother)</div><div className="text-lg font-serif font-bold text-[#2D3A3A]">{soulPurpose.matrikaraka}</div></div>
+                          <div className="p-3 bg-[#FDF8ED] rounded-xl border border-[#2D3A3A]/5"><div className="text-[10px] font-bold text-[#2D3A3A]/50 uppercase mb-1">Putrakaraka (Children)</div><div className="text-lg font-serif font-bold text-[#2D3A3A]">{soulPurpose.putrakaraka}</div></div>
+                          <div className="p-3 bg-[#FDF8ED] rounded-xl border border-[#2D3A3A]/5"><div className="text-[10px] font-bold text-[#2D3A3A]/50 uppercase mb-1">Gnatikaraka (Obstacles)</div><div className="text-lg font-serif font-bold text-[#2D3A3A]">{soulPurpose.gnatikaraka}</div></div>
+                          <div className="p-3 bg-[#FDF8ED] rounded-xl border border-[#2D3A3A]/5"><div className="text-[10px] font-bold text-[#2D3A3A]/50 uppercase mb-1">Darakaraka (Spouse)</div><div className="text-lg font-serif font-bold text-[#2D3A3A]">{soulPurpose.darakaraka}</div></div>
+                      </div>
                   </div>
                   <div className="bg-white p-6 rounded-3xl shadow-sm border border-[#2D3A3A]/5 hover:shadow-md transition-all">
                       <div className="text-[10px] font-bold text-[#2D3A3A]/40 uppercase tracking-widest mb-1">9th House of Dharma</div>
@@ -1519,7 +1533,9 @@ export default function Home() {
                                         <th className="pb-4">Degree</th>
                                         <th className="pb-4">Rasi</th>
                                         <th className="pb-4">Nakshatra</th>
-                                        <th className="pb-4">Pada</th>
+                                        <th className="pb-4"><JargonTooltip text="Pada" definition="A 3°20' quarter of a Nakshatra, mapping to a D9 Navamsa sign." /></th>
+                                        <th className="pb-4">Nakshatra Lord</th>
+                                        <th className="pb-4">Dignity</th>
                                         <th className="pb-4">Status</th>
                                     </tr>
                                 </thead>
@@ -1531,10 +1547,12 @@ export default function Home() {
                                             <td className="py-4">{p.rasi}</td>
                                             <td className="py-4">{p.nakshatra}</td>
                                             <td className="py-4 text-center">{p.pada}</td>
+                                            <td className="py-4 font-bold text-[#D97757]">{p.nakshatraLord || "-"}</td>
+                                            <td className="py-4"><span className={`px-2 py-0.5 rounded text-[10px] font-bold ${p.dignity === "Exalted" ? "bg-green-100 text-green-700" : p.dignity === "Debilitated" ? "bg-red-100 text-red-700" : p.dignity === "Moolatrikona" || p.dignity === "Own Sign" ? "bg-blue-100 text-blue-700" : "bg-gray-100 text-gray-500"}`}>{p.dignity || "-"}</span></td>
                                             <td className="py-4">
                                                 <div className="flex flex-wrap gap-1">
-                                                    {p.isRetrograde && <span className="px-2 py-0.5 bg-orange-50 text-orange-600 text-[10px] font-bold rounded">RET</span>}
-                                                    {p.isCombust && <span className="px-2 py-0.5 bg-red-50 text-red-600 text-[10px] font-bold rounded">COM</span>}
+                                                    {p.isRetrograde && <span className="px-2 py-0.5 bg-orange-50 text-orange-600 text-[10px] font-bold rounded group relative cursor-help">RET<span className="invisible opacity-0 group-hover:visible group-hover:opacity-100 transition-all absolute bottom-full left-1/2 -translate-x-1/2 mb-1 w-32 p-1.5 bg-[#2D3A3A] text-white text-[10px] font-medium rounded shadow-xl z-50 text-center pointer-events-none">Retrograde: Appears to move backward. Energy is internalized.</span></span>}
+                                                    {p.isCombust && <span className="px-2 py-0.5 bg-red-50 text-red-600 text-[10px] font-bold rounded group relative cursor-help">COM<span className="invisible opacity-0 group-hover:visible group-hover:opacity-100 transition-all absolute bottom-full left-1/2 -translate-x-1/2 mb-1 w-32 p-1.5 bg-[#2D3A3A] text-white text-[10px] font-medium rounded shadow-xl z-50 text-center pointer-events-none">Combust: Too close to the Sun. Energy is overshadowed.</span></span>}
                                                 </div>
                                             </td>
                                         </tr>
@@ -1554,8 +1572,10 @@ export default function Home() {
                                         <th className="pb-4">Degree</th>
                                         <th className="pb-4">Rasi</th>
                                         <th className="pb-4">Nakshatra</th>
-                                        <th className="pb-4">Pada</th>
-                                        <th className="pb-4">Kakshya</th>
+                                        <th className="pb-4"><JargonTooltip text="Pada" definition="A 3°20' quarter of a Nakshatra, mapping to a D9 Navamsa sign." /></th>
+                                        <th className="pb-4">Nakshatra Lord</th>
+                                        <th className="pb-4">Dignity</th>
+                                        <th className="pb-4"><JargonTooltip text="Kakshya" definition="A 3.75° zone within a sign, ruled by a specific planet. Used to refine transit results." /></th>
                                         <th className="pb-4">Status</th>
                                     </tr>
                                 </thead>
@@ -1567,12 +1587,14 @@ export default function Home() {
                                             <td className="py-4">{p.rasi}</td>
                                             <td className="py-4">{p.nakshatra}</td>
                                             <td className="py-4 text-center">{p.pada}</td>
+                                            <td className="py-4 font-bold text-[#D97757]">{p.nakshatraLord || "-"}</td>
+                                            <td className="py-4"><span className={`px-2 py-0.5 rounded text-[10px] font-bold ${p.dignity === "Exalted" ? "bg-green-100 text-green-700" : p.dignity === "Debilitated" ? "bg-red-100 text-red-700" : p.dignity === "Moolatrikona" || p.dignity === "Own Sign" ? "bg-blue-100 text-blue-700" : "bg-gray-100 text-gray-500"}`}>{p.dignity || "-"}</span></td>
                                             <td className="py-4">{p.kakshya || "-"}</td>
                                             <td className="py-4">
                                                 <div className="flex flex-wrap gap-1">
-                                                    {p.isRetrograde && <span className="px-2 py-0.5 bg-orange-50 text-orange-600 text-[10px] font-bold rounded">RET</span>}
-                                                    {p.isCombust && <span className="px-2 py-0.5 bg-red-50 text-red-600 text-[10px] font-bold rounded">COM</span>}
-                                                    {p.vedha?.isObstructed && <span className="px-2 py-0.5 bg-gray-50 text-gray-600 text-[10px] font-bold rounded">VED</span>}
+                                                    {p.isRetrograde && <span className="px-2 py-0.5 bg-orange-50 text-orange-600 text-[10px] font-bold rounded group relative cursor-help">RET<span className="invisible opacity-0 group-hover:visible group-hover:opacity-100 transition-all absolute bottom-full left-1/2 -translate-x-1/2 mb-1 w-32 p-1.5 bg-[#2D3A3A] text-white text-[10px] font-medium rounded shadow-xl z-50 text-center pointer-events-none">Retrograde: Appears to move backward. Energy is internalized.</span></span>}
+                                                    {p.isCombust && <span className="px-2 py-0.5 bg-red-50 text-red-600 text-[10px] font-bold rounded group relative cursor-help">COM<span className="invisible opacity-0 group-hover:visible group-hover:opacity-100 transition-all absolute bottom-full left-1/2 -translate-x-1/2 mb-1 w-32 p-1.5 bg-[#2D3A3A] text-white text-[10px] font-medium rounded shadow-xl z-50 text-center pointer-events-none">Combust: Too close to the Sun. Energy is overshadowed.</span></span>}
+                                                    {p.vedha?.isObstructed && <span className="px-2 py-0.5 bg-gray-50 text-gray-600 text-[10px] font-bold rounded group relative cursor-help">VED<span className="invisible opacity-0 group-hover:visible group-hover:opacity-100 transition-all absolute bottom-full left-1/2 -translate-x-1/2 mb-1 w-32 p-1.5 bg-[#2D3A3A] text-white text-[10px] font-medium rounded shadow-xl z-50 text-center pointer-events-none">Vedha: Transit is obstructed or blocked by another planet.</span></span>}
                                                 </div>
                                             </td>
                                         </tr>
@@ -1596,8 +1618,8 @@ export default function Home() {
                                         <th className="pb-4">Rasi</th>
                                         <th className="pb-4">House</th>
                                         <th className="pb-4">Nakshatra</th>
-                                        <th className="pb-4">Pada</th>
-                                        <th className="pb-4">Kakshya</th>
+                                        <th className="pb-4"><JargonTooltip text="Pada" definition="A 3°20' quarter of a Nakshatra, mapping to a D9 Navamsa sign." /></th>
+                                        <th className="pb-4"><JargonTooltip text="Kakshya" definition="A 3.75° zone within a sign, ruled by a specific planet. Used to refine transit results." /></th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-[#2D3A3A]/5">
